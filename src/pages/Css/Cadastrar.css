@@ -1,0 +1,241 @@
+.form-cadastro-clientes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 4rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-cadastro-clientes label {
+  font-weight: bold;
+  font-size: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  color: black;
+}
+
+.form-cadastro-clientes input {
+  padding: 0.6rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 2px solid #000;
+  background-color: black;
+  color: white;
+}
+/* Estilo para inputs e selects com fundo preto e aparência mais robusta */
+.input-estilizado {
+  background-color: #000;
+  color: #fff;
+  padding: 10px;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Estilo para alinhar o select e o CPF lado a lado */
+.cliente-select-group {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.cliente-select-group label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.cpf-disabled-wrapper {
+  position: relative;
+}
+
+.cpf-disabled-wrapper:hover::after {
+  content: "Campo bloqueado";
+  position: absolute;
+  top: -35px;
+  left: 0;
+  background-color: #c00;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
+}
+
+.cpf-disabled-wrapper:hover::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #c00 transparent transparent transparent;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 400px;
+  text-align: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.modal-body button {
+  margin-top: 20px;
+}
+.autocomplete-container {
+  position: relative;
+  width: 100%;
+}
+
+.input-pesquisavel {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  background-color: #000;
+  color: white;
+  border: 2px solid #00bfff;
+  border-radius: 6px;
+  outline: none;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #111;
+  border: 1px solid #00bfff;
+  border-radius: 6px;
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.autocomplete-dropdown li {
+  padding: 12px 16px;
+  cursor: pointer;
+  color: white;
+  border-bottom: 1px solid #333;
+}
+
+.autocomplete-dropdown li:hover {
+  background-color: #00bfff;
+  color: black;
+}
+.input-invalido {
+  border: 2px solid red !important;
+}
+
+.cpf-valido {
+  color: green;
+  font-weight: bold;
+  margin-top: 5px;
+  display: block;
+}
+
+.cpf-invalido {
+  color: red;
+  font-weight: bold;
+  margin-top: 5px;
+  display: block;
+}
+/* Contêiner principal */
+.react-select__control {
+  background-color: black;
+  color: white;
+  border-radius: 8px;
+  border: 1px solid #444;
+  min-height: 40px;
+  box-shadow: none;
+}
+
+/* Placeholder */
+.react-select__placeholder {
+  color: #aaa;
+  font-weight: 500;
+}
+
+/* Texto do valor selecionado */
+.react-select__single-value {
+  color: white;
+  font-weight: bold;
+}
+
+/* Menu dropdown */
+.react-select__menu {
+  background-color: #1e1e1e;
+  color: white;
+  border-radius: 8px;
+  z-index: 99;
+}
+.preview-imagens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.preview-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #111;
+}
+
+.preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-remover {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}

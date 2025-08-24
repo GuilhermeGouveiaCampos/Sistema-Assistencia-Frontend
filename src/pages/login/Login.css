@@ -1,0 +1,138 @@
+/* Impede qualquer rolagem lateral ou vertical */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fundo roxo escuro ocupando 100% da tela */
+.login-box {
+  background-color: #1c1740;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 0 4rem;
+  gap: 2rem;
+  overflow: hidden;
+}
+
+/* Lado esquerdo: logo + formulário */
+.login-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  flex: 1;
+  max-width: 500px;
+  padding-left: 5rem; 
+}
+
+.logo {
+  width: 200px;
+  margin-bottom: 2rem;
+}
+
+/* Área do formulário */
+.form-area {
+  width: 100%;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  color: white;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+}
+
+/* Link e botão */
+.esqueceu {
+  text-align: right;
+  margin: 0.5rem 0 1.5rem 0;
+}
+
+.esqueceu a {
+  font-size: 0.75rem;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-entrar {
+  background-color: #3e2b89;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-entrar:hover {
+  background-color: #4b34a5;
+}
+
+/* Lado direito: imagem do técnico */
+.login-right {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Imagem do técnico */
+.ilustracao {
+  width: 90%;
+  max-width: 900px;
+}
+
+/* Responsivo para telas menores */
+@media (max-width: 900px) {
+  .login-box {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+
+  .login-left,
+  .login-right {
+    width: 100%;
+    max-width: 90%;
+    text-align: center;
+    align-items: center;
+  }
+
+  .form-area {
+    max-width: 350px;
+    width: 100%;
+  }
+
+  .logo {
+    margin-bottom: 1rem;
+  }
+
+  .ilustracao {
+    margin-top: 2rem;
+    width: 280px;
+  }
+}

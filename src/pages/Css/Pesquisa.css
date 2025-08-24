@@ -1,0 +1,338 @@
+.clientes-content {
+  padding: 2rem;
+}
+
+.filtros-clientes {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.filtros-clientes input {
+  padding: 0.6rem;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 200px;
+  background: black;
+  color: white;
+  border: 2px solid #000;
+  border-radius: 6px;
+}
+
+.btn-consultar {
+  background: white;
+  color: blue;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.5rem 1rem;
+}
+
+.tabela-clientes {
+  border: 3px solid black;
+  border-radius: 10px;
+  padding: 1rem;
+  background-color: white;
+}
+
+.tabela-clientes table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela-clientes th {
+  background: black;
+  color: white;
+  padding: 0.75rem;
+  font-size: 1rem;
+  text-align: left;
+}
+
+.tabela-clientes td {
+  padding: 0.6rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.acoes-clientes {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+.btn.roxo-claro {
+  background-color: #a034f3; /* tom de roxo claro */
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+
+.btn.roxo {
+  background-color: purple;
+  color: white;
+  border-color: purple;
+}
+.voltar-container {
+  margin-top: 2rem;
+}
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  overflow-x: hidden;
+  width: 100vw; 
+}
+
+.sidebar {
+  width: 270px;
+  min-width: 270px;
+  background-color: #1e1e50;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2rem;
+  box-sizing: border-box;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Centraliza os botões de ação */
+.acoes-clientes {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Corrige o botão de voltar */
+.voltar-container {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+/* Botões com cores */
+.btn {
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn.azul {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn.preto {
+  background-color: #333;
+  color: white;
+}
+
+.btn.vermelho {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn.vermelho-claro {
+  background-color: #f66;
+  color: white;
+}
+
+.btn.roxo {
+  background-color: purple;
+  color: white;
+}
+
+.container-central {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+.linha-selecionada {
+  background-color: #d0e7ff !important;
+}
+.tabela-clientes tr {
+  background-color: white;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(60%);
+}
+.titulo-clientes {
+  position: absolute;
+  top: 2.4rem;     /* ← diminua esse valor para aproximar */
+  left: 40px;     /* alinhado ao início do conteúdo principal */
+  font-size: 40px;
+  font-weight: bold;
+  color: black;
+  margin: 0;
+  z-index: 2;
+}
+
+.top-bar {
+  border-bottom: 4px solid black;
+  background-color: white; /* ou black se quiser escura */
+  padding: 1rem;
+  margin: 0 2rem; /* espaçamento lateral */
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+/* ---------------- MODAIS (Pop-ups) ---------------- */
+/* Estilo global para todos os modais */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px 30px;
+  border-radius: 10px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  color: black;
+  text-align: center;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+}
+
+.modal-footer {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.btn.verde {
+  background-color: #28a745; /* verde padrão */
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn.verde:hover {
+  background-color: #218838; /* verde escuro no hover */
+}
+.cliente-select-group {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.cliente-select-group label {
+  flex: 1;
+}
+.input-estilizado {
+  background-color: black;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-weight: bold;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.input-estilizado:focus {
+  outline: 2px solid #007bff;
+}
+.galeria-imagens {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.galeria-imagens img {
+  width: 200px;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.tabela-detalhes {
+  width: 100%;
+  max-width: 700px;
+  margin: 2rem auto;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+}
+
+.tabela-detalhes th {
+  background-color: #1e1e50;
+  color: white;
+  text-align: left;
+  padding: 12px;
+  width: 200px;
+  font-size: 1rem;
+}
+
+.tabela-detalhes td {
+  padding: 12px;
+  font-size: 1rem;
+  color: #333;
+  background-color: #f9f9f9;
+}
+
+.tabela-detalhes tr:not(:last-child) td {
+  border-bottom: 1px solid #ddd;
+}
+.card-atr{
+  border: 2px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+.card-atr__header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.card-atr__resume{
+  display: flex;
+  gap: 14px;
+  font-weight: 600;
+}
+.muted{ color:#666; font-size:.9rem; }

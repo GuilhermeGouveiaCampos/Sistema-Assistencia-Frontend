@@ -1,0 +1,58 @@
+/* RecuperarSenha.css */
+
+.recuperar-box {
+  background-color: #1c1740;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.recuperar-form {
+  background-color: #2a235e;
+  padding: 2rem 3rem;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 400px;
+}
+
+.recuperar-form h2 {
+  color: white;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.recuperar-form label {
+  color: white;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.recuperar-form input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+}
+
+.recuperar-form button {
+  background-color: #3e2b89;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.recuperar-form button:hover {
+  background-color: #4b34a5;
+}

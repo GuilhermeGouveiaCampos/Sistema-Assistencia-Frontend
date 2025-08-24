@@ -1,0 +1,290 @@
+/* ===== Reset básico ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===== Variáveis de espaçamento (ajuste como quiser) ===== */
+:root{
+  --sidebar-w: 230px;      /* largura do menu lateral */
+  --menu-gap: 12px;        /* espaço entre botões do menu */
+  --menu-btn-py: 0.6rem;   /* padding vertical do botão do menu */
+  --menu-btn-px: 0.9rem;   /* padding horizontal do botão do menu */
+  --menu-icon: 28px;       /* tamanho do ícone no botão */
+  --menu-font: 0.95rem;    /* fonte do texto no botão */
+
+  --content-pad-y: 20px;   /* padding vertical do conteúdo */
+  --content-pad-x: 28px;   /* padding horizontal do conteúdo */
+
+  --table-font: 15px;      /* fonte da tabela */
+  --row-pad-y: 12px;       /* padding vertical das células */
+  --row-pad-x: 16px;       /* padding horizontal das células */
+  --row-line: 1.25;        /* line-height nas células */
+
+  --sidebar-logo: 140px;   /* tamanho do logo no menu */
+}
+
+/* ===== Layout base (menu + conteúdo) ===== */
+.dashboard-container{
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;            /* evita barra horizontal geral */
+}
+
+/* ===== Sidebar (estático, sem rolagem) ===== */
+.sidebar{
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background-color: #1e1e50;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 1.5rem;
+  position: sticky;           /* fica preso ao topo */
+  top: 0;
+  height: 100vh;              /* ocupa a janela inteira */
+  overflow-y: hidden;         /* 🚫 não rola */
+}
+
+/* Logo do menu */
+.sidebar-logo img{
+  width: var(--sidebar-logo) !important;
+  height: var(--sidebar-logo) !important;
+  object-fit: contain;
+}
+
+/* Lista de botões do menu */
+.sidebar-menu{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: var(--menu-gap);
+  margin-top: 1rem;
+}
+
+/* Botão do menu */
+.menu-btn{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fff;
+  background: transparent;
+  border: 2px solid #fff;
+  padding: var(--menu-btn-py) var(--menu-btn-px);
+  border-radius: 8px;
+  width: 98%;
+  max-width: calc(var(--sidebar-w) - 10px);
+  justify-content: flex-start;
+  transition: .2s ease;
+  cursor: pointer;
+}
+.menu-btn:hover{ background-color: #2e2e6f; }
+
+.menu-btn img{
+  width: var(--menu-icon);
+  height: var(--menu-icon);
+  object-fit: contain;
+}
+.menu-btn span{
+  font-weight: 500;
+  font-size: var(--menu-font);
+}
+
+/* ===== Conteúdo principal (rola aqui) ===== */
+.main-content{
+  flex: 1;
+  min-width: 0;               /* evita overflow em grids/tabelas */
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;           /* rolagem só no conteúdo */
+  padding: var(--content-pad-y) var(--content-pad-x);
+}
+
+/* Top bar / usuário */
+.top-bar{
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem 0 1.25rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+.user-info{
+  display: flex; align-items: center; gap: 1rem;
+  font-size: 1rem; font-weight: 500;
+}
+.avatar-img{
+  width: 50px; height: 50px; object-fit: cover; border-radius: 50%;
+}
+
+/* ===== Filtros e título ===== */
+.titulo-clientes{
+  font-size: 30px;
+  margin: 10px 0 16px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.filtros-clientes{
+  display: flex; gap: 12px; margin-bottom: 14px;
+}
+.filtros-clientes input,
+.filtros-clientes button{
+  height: 40px; font-size: 14px; padding: 0 12px;
+}
+
+/* ===== Tabelas ===== */
+.tabela-clientes table,
+.tabela-usuarios table,
+.tabela-detalhes{
+  width: 100%;
+  font-size: var(--table-font);
+  border-collapse: collapse;
+}
+.tabela-clientes th, .tabela-clientes td,
+.tabela-usuarios th, .tabela-usuarios td,
+.tabela-detalhes th, .tabela-detalhes td{
+  padding: var(--row-pad-y) var(--row-pad-x);
+  line-height: var(--row-line);
+}
+.tabela-clientes tbody tr:nth-child(even),
+.tabela-usuarios tbody tr:nth-child(even){
+  background: #fafafa;     /* zebra suave */
+}
+.tabela-clientes tbody tr:hover,
+.tabela-usuarios tbody tr:hover{
+  background: #f2f2f2;     /* destaque no hover */
+}
+
+/* ===== Botões genéricos ===== */
+.btn{
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+/* ===== Ajustes por ALTURA (garante que o menu caiba sempre) ===== */
+@media (max-height: 820px){
+  :root{
+    --sidebar-logo: 120px;
+    --menu-btn-py: 0.5rem;
+    --menu-btn-px: 0.8rem;
+    --menu-font: 0.9rem;
+  }
+}
+@media (max-height: 720px){
+  :root{
+    --sidebar-w: 210px;
+    --sidebar-logo: 110px;
+    --menu-gap: 10px;
+    --menu-icon: 24px;
+    --menu-font: 0.85rem;
+  }
+}
+@media (max-height: 640px){
+  :root{
+    --sidebar-logo: 100px;
+    --menu-btn-py: 0.45rem;
+    --menu-btn-px: 0.7rem;
+    --menu-font: 0.8rem;
+  }
+}
+/* ===== Sidebar estática, ocupando toda a altura ===== */
+.sidebar{
+  position: sticky;
+  top: 0;
+  height: 100vh;              /* ocupa a janela inteira */
+  overflow: hidden;           /* não rola */
+  background: #1e1e50;
+  color: #fff;
+  width: 270px;               /* ajuste se quiser mais largo */
+  min-width: 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 10px 16px;
+}
+
+/* Logo grande no topo */
+.sidebar-logo img{
+  width: 180px !important;    /* ajuste 160–200 */
+  height: 180px !important;
+  object-fit: contain;
+}
+
+/* Distribui os botões por TODA a altura */
+.sidebar-menu{
+  flex: 1;                    /* ocupa o espaço entre topo e base */
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* << chave para ficar “como no print” */
+  gap: 0;                         /* o espaçamento vem da distribuição */
+  padding: 8px 4px 12px;
+}
+
+/* Botões ocupando quase toda a largura, com bom “respiro” */
+.menu-btn{
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: .9rem 1.1rem;      /* mais alto/largo */
+  border: 2px solid #fff;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: .2s ease;
+}
+.menu-btn:hover{ background:#2e2e6f; }
+
+.menu-btn img{ width: 36px; height: 36px; object-fit: contain; }
+.menu-btn span{ font-size: 1.06rem; font-weight: 600; }
+
+/* Conteúdo rola, sidebar fica fixa */
+.main-content{
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: #fff;
+}
+
+/* ——— Ajustes por altura, para nunca “estourar” ——— */
+@media (max-height: 820px){
+  .sidebar-logo img{ width: 160px !important; height: 160px !important; }
+  .menu-btn{ padding: .8rem 1rem; }
+  .menu-btn img{ width: 32px; height: 32px; }
+  .menu-btn span{ font-size: 1rem; }
+}
+@media (max-height: 720px){
+  .sidebar{ width: 250px; min-width: 250px; }
+  .sidebar-logo img{ width: 140px !important; height: 140px !important; }
+  .menu-btn{ padding: .7rem .9rem; }
+  .menu-btn img{ width: 28px; height: 28px; }
+  .menu-btn span{ font-size: .95rem; }
+}
+.titulo-wrap{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* barra do título com botão ao lado direito */
+.titulo-bar{
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px;
+  margin: 10px 0 16px; /* mantém o espaçamento original do h1 */
+}
+
+.titulo-bar .titulo-clientes{
+  margin: 0 !important;     /* não empurra o botão pra baixo */
+  line-height: 1.1;
+}
+
+.titulo-bar .titulo-atr-btn{
+  margin-left: auto;         /* leva o botão para a direita */
+  flex: 0 0 auto;
+}
