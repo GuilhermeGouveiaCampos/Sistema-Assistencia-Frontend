@@ -1,13 +1,25 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+// src/components/PrivateRoute.tsx
+import React from "react";
+import { Navigate, Outlet } from "react-router-dom";
 
-interface PrivateRouteProps {
-  children: React.ReactNode;
+function hasToken() {
+  try {
+    return !!localStorage.getItem("token");
+  } catch {
+    return false;
+  }
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem('token'); 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/" />;
-};
+export default function PrivateRoute() {
+  // Lê do localStorage de forma síncrona (evita piscar/erro)
+  const [authed, setAuthed] = React.useState(() => hasToken());
 
-export default PrivateRoute;
+  // Sincroniza se o token mudar (outra aba, logout, etc.)
+  React.useEffect(() => {
+    const onStorage = () => setAuthed(hasToken());
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  return authed ? <Outlet /> : <Navigate to="/login" replace />;
+}

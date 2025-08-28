@@ -1,9 +1,8 @@
+// src/pages/login/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ModalLoginSucesso from "../../components/ModalLoginSucesso";
 import "./Login.css";
-
-// ✅ cliente axios central (usa import.meta.env.VITE_API_URL)
 import api from "../../services/api";
 
 const formatarCPF = (valor: string): string => {
@@ -56,36 +55,60 @@ const Login: React.FC = () => {
       alert("CPF inválido.");
       return;
     }
+    if (!senha.trim()) {
+      alert("Informe a senha.");
+      return;
+    }
 
     try {
       setLoading(true);
 
-      // ✅ Chamada via api central (baseURL = VITE_API_URL)
-      const res = await api.post("/api/login", { cpf, senha });
-      const data = res.data;
+      // Envie o CPF somente com dígitos
+      const cpfLimpo = cpf.replace(/\D/g, "");
+      const res = await api.post("/api/login", { cpf: cpfLimpo, senha: senha.trim() });
 
-      // ✅ Salva os dados retornados pelo backend (top-level)
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("nome", data.nome);
-      localStorage.setItem("id", String(data.id_usuario));
-      if (data?.id_nivel != null) localStorage.setItem("id_nivel", String(data.id_nivel));
+      const data = res.data || {};
 
-      // ⚠️ Salva exatamente o que veio de genero (M/F ou masculino/feminino), sem default
+      // Salva dados retornados
+      if (data.token) localStorage.setItem("token", data.token);
+      if (data.nome) localStorage.setItem("nome", data.nome);
+
+      // ⬇️ O backend retorna `id`, não `id_usuario`
+      if (data.id != null) {
+        localStorage.setItem("id", String(data.id));
+      } else if (data.id_usuario != null) {
+        localStorage.setItem("id", String(data.id_usuario));
+      }
+
+      if (data.id_nivel != null) {
+        localStorage.setItem("id_nivel", String(data.id_nivel));
+      }
+
       if (typeof data.genero === "string") {
         localStorage.setItem("genero", data.genero);
       } else {
         localStorage.removeItem("genero");
       }
 
-      setNomeUsuario(data.nome);
-      setShowModal(true);
+      // 👉 Redireciona imediatamente para a dashboard (sem modal)
+      navigate("/dashboard", { replace: true });
+      return;
+
+      // (as linhas abaixo foram removidas por não serem mais necessárias)
+      // setNomeUsuario(data.nome || "Usuário");
+      // setShowModal(true);
     } catch (err: any) {
       console.error("❌ Erro no login:", err);
+
+      // tenta extrair mensagem do backend
       const msg =
+        err?.response?.data?.erro ||
         err?.response?.data?.mensagem ||
         err?.response?.data?.message ||
+        (err?.response?.status === 500 ? "Erro interno do servidor." : "") ||
         err?.message ||
         "Erro ao conectar com o servidor.";
+
       alert(msg);
     } finally {
       setLoading(false);
@@ -107,14 +130,10 @@ const Login: React.FC = () => {
               value={cpf}
               onChange={handleCpfChange}
               maxLength={14}
+              autoComplete="username"
             />
-            {cpf.length === 14 && (
-              <span
-                style={{
-                  color: cpfValido ? "lightgreen" : "red",
-                  fontSize: "0.8rem",
-                }}
-              >
+          {cpf.length === 14 && (
+              <span style={{ color: cpfValido ? "lightgreen" : "red", fontSize: "0.8rem" }}>
                 {cpfValido ? "CPF válido" : "CPF inválido"}
               </span>
             )}
@@ -127,9 +146,8 @@ const Login: React.FC = () => {
               id="senha"
               placeholder="Digite sua senha"
               value={senha}
-              onChange={(e) =>
-                setSenha(e.target.value.replace(/\s/g, "").slice(0, 20))
-              }
+              onChange={(e) => setSenha(e.target.value.replace(/\s/g, "").slice(0, 50))}
+              autoComplete="current-password"
             />
             <button
               type="button"
@@ -162,7 +180,7 @@ const Login: React.FC = () => {
                 cursor: "pointer",
                 padding: 0,
                 fontWeight: 700,
-                letterSpacing: "0.5px"
+                letterSpacing: "0.5px",
               }}
             >
               ESQUECEU A SENHA?
@@ -179,12 +197,13 @@ const Login: React.FC = () => {
         <img src="/eletricista.png" alt="Ilustração técnico" className="ilustracao" />
       </div>
 
+      {/* modal permanece no arquivo, mas não será exibido pois não setamos showModal */}
       {showModal && (
         <ModalLoginSucesso
           nome={nomeUsuario}
           onClose={() => {
             setShowModal(false);
-            navigate("/dashboard");
+            navigate("/dashboard", { replace: true });
           }}
         />
       )}
