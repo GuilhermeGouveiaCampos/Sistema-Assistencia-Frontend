@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../Css/Alterar.css';
-import '../Css/Cadastrar.css'; 
+import '../Css/Cadastrar.css';
 import '../Css/Pesquisa.css';
-import MenuLateral from "../../components/MenuLateral"; 
+import MenuLateral from "../../components/MenuLateral";
 
 // ✅ cliente axios central
 import api from '../../services/api';
+
+type LocalItem = {
+  id_local: string;        // normalizado para string
+  id_scanner: string;      // ex.: "LOC002"
+  local_instalado: string;
+  status_interno: string;  // texto do status
+  id_status: number;       // numérico
+};
+
+type LeitorItem = {
+  codigo: string;
+  nome?: string;
+};
 
 const AlterarOrdem: React.FC = () => {
   const navigate = useNavigate();
@@ -21,20 +34,30 @@ const AlterarOrdem: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const [idLocal, setIdLocal] = useState<string>('');
+  const [idLocal, setIdLocal] = useState<string>(''); // guarda o id_scanner
   const [statusDescricao, setStatusDescricao] = useState('');
+  const [locais, setLocais] = useState<LocalItem[]>([]);
 
-  const [locais, setLocais] = useState<{
-    id_local: number;
-    id_scanner: number;
-    local_instalado: string;
-    status_interno: string;
-    id_status: number;
-  }[]>([]);
+  // 🔗 RFID
+  const [uidTag, setUidTag] = useState<string>('');            // campo de UID (manual ou auto)
+  const [boundUid, setBoundUid] = useState<string>('');        // UID atualmente vinculado na OS
+  const [loadingBind, setLoadingBind] = useState(false);
+  const [loadingUnbind, setLoadingUnbind] = useState(false);
+  const [loadingBoundUid, setLoadingBoundUid] = useState(false);
 
+  // 🔊 Leitor + autofill
+  const [leitores, setLeitores] = useState<LeitorItem[]>([]);
+  const [leitorEscutado, setLeitorEscutado] = useState<string>(() => localStorage.getItem('leitor_codigo_front') || '');
+  const [autoFill, setAutoFill] = useState<boolean>(() => (localStorage.getItem('rfid_autofill') ?? '1') === '1');
+
+  // cache da TAG vinculada por OS
+  const cacheKey = (osId: number) => `rfid_bound_uid_${osId}`;
+  const setCacheBound = (osId: number, uid: string) => localStorage.setItem(cacheKey(osId), uid || '');
+  const getCacheBound = (osId: number) => localStorage.getItem(cacheKey(osId)) || '';
+
+  // carrega dados iniciais
   useEffect(() => {
     const ordemString = localStorage.getItem("ordemSelecionada");
-
     if (!ordemString) {
       alert("Nenhuma ordem selecionada.");
       navigate('/ordemservico');
@@ -42,50 +65,143 @@ const AlterarOrdem: React.FC = () => {
     }
 
     const ordem = JSON.parse(ordemString);
-    setIdOrdem(ordem.id_ordem);
-    setNomeCliente(ordem.nome_cliente);
-    setEquipamentoInfo(`${ordem.tipo_equipamento} ${ordem.marca} ${ordem.modelo} - ${ordem.numero_serie}`);
-    setDescricao(ordem.descricao_problema || '');
-    setDataCriacao(ordem.data_entrada?.split('T')[0]);
-    setIdLocal(ordem.id_local.toString());
+    const osId = Number(ordem.id_ordem ?? ordem.id_os ?? ordem.id);
+    setIdOrdem(Number.isFinite(osId) ? osId : null);
 
+    setNomeCliente(ordem.nome_cliente ?? '');
+    setEquipamentoInfo(`${ordem.tipo_equipamento ?? ''} ${ordem.marca ?? ''} ${ordem.modelo ?? ''} - ${ordem.numero_serie ?? ''}`.trim());
+    setDescricao(ordem.descricao_problema || '');
+
+    const data = String(ordem.data_entrada || ordem.data_criacao || ordem.data_atualizacao || '');
+    setDataCriacao(data.includes('T') ? data.split('T')[0] : data.substring(0, 10));
+
+    const currentLocal = String(ordem.id_local ?? ordem.id_scanner ?? '');
+    setIdLocal(currentLocal);
+
+    // locais
     api.get("/api/locais")
       .then(res => {
-        setLocais(res.data);
-        const localAtual = res.data.find((loc: any) => loc.id_scanner === ordem.id_local);
+        const recebidos: LocalItem[] = (res.data || []).map((x: any) => ({
+          id_local: String(x.id_local ?? ''),
+          id_scanner: String(x.id_scanner ?? ''),
+          local_instalado: String(x.local_instalado ?? ''),
+          status_interno: String(x.status_interno ?? ''),
+          id_status: Number(x.id_status ?? 0),
+        }));
+        setLocais(recebidos);
+
+        const localAtual = recebidos.find((l) => l.id_scanner === currentLocal);
         if (localAtual) {
           setStatusDescricao(localAtual.status_interno);
-          setStatus(localAtual.id_status);
+          setStatus(Number(localAtual.id_status || 0));
         }
       })
       .catch(err => console.error("Erro ao buscar locais:", err));
+
+    // leitores disponíveis para escuta (autofill)
+    api.get('/api/ardloc/leitores')
+      .then(res => setLeitores(res.data || []))
+      .catch(() => setLeitores([]));
+
+    // preenche TAG vinculada (servidor) ou cache
+    if (Number.isFinite(osId)) {
+      fetchBoundUidFromApi(osId).catch(() => {
+        const cached = getCacheBound(osId);
+        setBoundUid(cached);
+        if (cached) setUidTag(cached);
+      });
+    }
   }, [navigate]);
+
+  // polling last-uid do leitor selecionado p/ autopreencher o campo de UID
+  useEffect(() => {
+    if (!autoFill || !leitorEscutado) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await api.get('/api/ardloc/last-uid', { params: { leitor: leitorEscutado, maxAgeSec: 5 } });
+        if (data?.recente && data?.uid) {
+          const novo = String(data.uid).toUpperCase();
+          setUidTag((prev) => (prev !== novo ? novo : prev));
+        }
+      } catch { /* silencioso */ }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [autoFill, leitorEscutado]);
+
+  async function fetchBoundUidFromApi(id_os: number) {
+    setLoadingBoundUid(true);
+    try {
+      const { data } = await api.get('/api/rfid/bind/current', { params: { id_os } });
+      const uid = String(data?.uid || '').toUpperCase();
+      setBoundUid(uid);
+      if (uid) {
+        setUidTag(uid);
+        setCacheBound(id_os, uid);
+      }
+    } finally {
+      setLoadingBoundUid(false);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!idLocal || idLocal.trim() === '') {
-      alert("Selecione um local válido.");
-      return;
-    }
-
-    const ordemAtualizada = {
-      descricao_problema: descricao,
-      id_local: idLocal,
-      id_status: status
-    };
-
+    if (!idOrdem) return alert('Ordem inválida.');
+    if (!idLocal || idLocal.trim() === '') return alert("Selecione um local válido.");
     if (typeof status !== 'number' || isNaN(status) || status <= 0) {
       alert("Status inválido. Selecione um local válido para gerar o status.");
       return;
     }
 
+    const ordemAtualizada = {
+      descricao_problema: (descricao || '').trim(),
+      id_local: idLocal,  // string: "LOC002"
+      id_status: status   // número
+    };
+
     try {
       await api.put(`/api/ordens/${idOrdem}`, ordemAtualizada);
       setShowSuccessModal(true);
-    } catch (error) {
-      console.error('Erro ao atualizar ordem:', error);
-      alert('Erro ao atualizar ordem.');
+    } catch (error: any) {
+      console.error('Erro ao atualizar ordem:', error?.response?.data || error);
+      alert(error?.response?.data?.erro || 'Erro ao atualizar ordem.');
+    }
+  };
+
+  // 🔗 Vincular TAG à OS
+  const bindTag = async () => {
+    if (!idOrdem) return alert('Ordem inválida.');
+    const uid = (uidTag || '').trim().toUpperCase();
+    if (!/^[0-9A-F]{8,}$/i.test(uid)) return alert('Informe o UID da TAG (hex).');
+
+    try {
+      setLoadingBind(true);
+      await api.post('/api/rfid/bind', { uid, id_os: Number(idOrdem) });
+      setBoundUid(uid);
+      setCacheBound(idOrdem, uid);
+      alert(`TAG ${uid} vinculada à OS ${idOrdem}.`);
+    } catch (e: any) {
+      alert(e?.response?.data?.erro || 'Falha ao vincular TAG.');
+    } finally {
+      setLoadingBind(false);
+    }
+  };
+
+  // ❌ Desvincular TAG da OS
+  const unbindTag = async () => {
+    const uid = (uidTag || '').trim().toUpperCase();
+    if (!/^[0-9A-F]{8,}$/i.test(uid)) return alert('Informe o UID da TAG para desvincular.');
+
+    try {
+      setLoadingUnbind(true);
+      await api.post('/api/rfid/unbind', { uid });
+      setBoundUid('');
+      if (idOrdem) localStorage.removeItem(cacheKey(idOrdem));
+      alert(`TAG ${uid} desvinculada.`);
+    } catch (e: any) {
+      alert(e?.response?.data?.erro || 'Falha ao desvincular TAG.');
+    } finally {
+      setLoadingUnbind(false);
     }
   };
 
@@ -126,10 +242,13 @@ const AlterarOrdem: React.FC = () => {
                   const novoId = e.target.value;
                   setIdLocal(novoId);
 
-                  const localSelecionado = locais.find(loc => loc.id_scanner.toString() === novoId);
+                  const localSelecionado = locais.find(loc => loc.id_scanner === novoId);
                   if (localSelecionado) {
                     setStatusDescricao(localSelecionado.status_interno);
-                    setStatus(localSelecionado.id_status);
+                    setStatus(Number(localSelecionado.id_status || 0));
+                  } else {
+                    setStatusDescricao('');
+                    setStatus(0);
                   }
                 }}
                 required
@@ -155,38 +274,103 @@ const AlterarOrdem: React.FC = () => {
             </label>
 
             <label>
-              <span>📝 DESCRIÇÃO DO PROBLEMA</span>
-              <textarea
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                rows={4}
-                placeholder="Informe o que o cliente relatou sobre o problema"
-                required
-                className="input-estilizado"
-                style={{ resize: 'vertical' }}
-              />
-            </label>                                                                      
-
-            <label>
-              <span>📅 DATA DE CRIAÇÃO</span>
-              <input
-                type="text"
-                value={dataCriacao}
-                disabled
-                className="input-estilizado"
-              />
+              <span>🏷️ TAG CADASTRADA NA OS</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="text" value={boundUid || '—'} readOnly style={{ cursor: 'not-allowed' }} />
+                <button
+                  type="button"
+                  className="btn preto"
+                  onClick={() => idOrdem && fetchBoundUidFromApi(idOrdem)}
+                  disabled={loadingBoundUid || !idOrdem}
+                >
+                  {loadingBoundUid ? 'ATUALIZANDO...' : 'ATUALIZAR'}
+                </button>
+              </div>
             </label>
 
-            <div className="acoes-clientes">
-              <button type="submit" className="btn azul">SALVAR</button>
-              <button type="button" className="btn preto" onClick={() => {
-                localStorage.removeItem("ordemSelecionada");
-                navigate('/ordemservico');
-              }}>CANCELAR</button>
+            {/* 🔗 RFID */}
+            <div style={{ marginTop: 16, background: '#fff', border: '1px solid #ddd', borderRadius: 10, padding: 16 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 10 }}>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span>Leitor (escuta):</span>
+                  <select
+                    value={leitorEscutado}
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      setLeitorEscutado(v);
+                      localStorage.setItem('leitor_codigo_front', v);
+                    }}
+                    style={{ background: '#000', color: '#fff', border: '1px solid #555', padding: 6, borderRadius: 6, minWidth: 220 }}
+                  >
+                    <option value="">Selecione o leitor</option>
+                    {leitores.map((l) => (
+                      <option key={l.codigo} value={l.codigo}>
+                        {l.nome || l.codigo}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoFill}
+                    onChange={(e) => {
+                      setAutoFill(e.target.checked);
+                      localStorage.setItem('rfid_autofill', e.target.checked ? '1' : '0');
+                    }}
+                  />
+                  <span>Preencher UID automaticamente quando passar a TAG</span>
+                </label>
+              </div>
+
+              <p style={{ margin: '6px 0 12px 0', color: '#666' }}>
+                Passe a TAG no leitor configurado ou insira manualmente o UID abaixo.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={uidTag}
+                  onChange={(e) => setUidTag(e.target.value.toUpperCase())}
+                  placeholder="UID da TAG (hex)"
+                  style={{
+                    backgroundColor: '#000',
+                    color: '#fff',
+                    border: '1px solid #555',
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    letterSpacing: '1px',
+                    minWidth: 220,
+                  }}
+                />
+                <button type="button" className="btn azul" onClick={bindTag} disabled={loadingBind || !idOrdem || !uidTag}>
+                  {loadingBind ? 'VINCULANDO...' : 'VINCULAR'}
+                </button>
+                <button type="button" className="btn vermelho" onClick={unbindTag} disabled={loadingUnbind || !uidTag}>
+                  {loadingUnbind ? 'DESVINCULANDO...' : 'DESVINCULAR'}
+                </button>
+              </div>
             </div>
 
-            <div className="voltar-container">
-              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>VOLTAR</button>
+            <div className="acoes-clientes" style={{ marginTop: 24 }}>
+              <button type="submit" className="btn azul">SALVAR</button>
+              <button
+                type="button"
+                className="btn preto"
+                onClick={() => {
+                  localStorage.removeItem("ordemSelecionada");
+                  navigate('/ordemservico');
+                }}
+              >
+                CANCELAR
+              </button>
+            </div>
+
+            <div className="voltar-container" style={{ marginTop: 20 }}>
+              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>
+                VOLTAR
+              </button>
             </div>
           </form>
         </div>

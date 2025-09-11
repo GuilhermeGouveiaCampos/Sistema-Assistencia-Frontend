@@ -152,7 +152,9 @@ const CadastrarOrdem: React.FC = () => {
     const tipoEquipamento = equipamentoSelecionado.tipo;
 
     try {
-      const response = await api.get(`/api/tecnicos/menos-carregados/${tipoEquipamento}`);
+      // 🔧 ALTERAÇÃO ÚNICA: encode do tipo para evitar erro com espaços/acentos
+      const encodedTipo = encodeURIComponent(tipoEquipamento);
+      const response = await api.get(`/api/tecnicos/menos-carregados/${encodedTipo}`);
       const tecnico = response.data;
 
       setIdTecnico(`${tecnico.nome} - AUTO`);
