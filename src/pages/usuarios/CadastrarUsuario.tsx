@@ -52,6 +52,9 @@ const CadastrarUsuario: React.FC = () => {
   const [mostrarModalSucesso, setMostrarModalSucesso] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
+  // ✅ NOVO: campo de confirmar senha
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+
   const formatarCPF = (valor: string): string => {
     const apenasNumeros = valor.replace(/\D/g, "");
     return apenasNumeros
@@ -82,6 +85,12 @@ const CadastrarUsuario: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✅ validação de confirmar senha
+    if (formulario.senha !== confirmarSenha) {
+      alert("As senhas não coincidem.");
+      return;
+    }
 
     if (!validarCPF(formulario.cpf)) {
       alert("CPF inválido.");
@@ -193,6 +202,17 @@ const CadastrarUsuario: React.FC = () => {
                   {mostrarSenha ? "🚫" : "👁️"}
                 </button>
               </div>
+            </label>
+
+            <label>
+              <span>🔒 CONFIRMAR SENHA</span>
+              <input
+                type={mostrarSenha ? "text" : "password"}
+                name="confirmarSenha"
+                required
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+              />
             </label>
 
             <label>
