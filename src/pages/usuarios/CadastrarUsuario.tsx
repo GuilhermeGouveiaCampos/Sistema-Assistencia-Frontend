@@ -50,7 +50,11 @@ const CadastrarUsuario: React.FC = () => {
 
   const [cpfValido, setCpfValido] = useState<boolean | null>(null);
   const [mostrarModalSucesso, setMostrarModalSucesso] = useState(false);
+
+  // 👁️ Olho da SENHA (já existia)
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  // 👁️ NOVO: Olho independente para CONFIRMAR SENHA
+  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
 
   // ✅ NOVO: campo de confirmar senha
   const [confirmarSenha, setConfirmarSenha] = useState("");
@@ -133,6 +137,10 @@ const CadastrarUsuario: React.FC = () => {
     }
   };
 
+  // ✅ NOVO: status de comparação das senhas (para feedback em tempo real)
+  const mostrouFeedbackConfirmar = confirmarSenha.length > 0;
+  const senhasIguais = mostrouFeedbackConfirmar && formulario.senha === confirmarSenha;
+
   return (
     <MenuLateral>
       {mostrarModalSucesso && (
@@ -206,13 +214,35 @@ const CadastrarUsuario: React.FC = () => {
 
             <label>
               <span>🔒 CONFIRMAR SENHA</span>
-              <input
-                type={mostrarSenha ? "text" : "password"}
-                name="confirmarSenha"
-                required
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-              />
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <input
+                  type={mostrarConfirmarSenha ? "text" : "password"}
+                  name="confirmarSenha"
+                  required
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
+                  style={{ marginLeft: "5px", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                >
+                  {mostrarConfirmarSenha ? "🚫" : "👁️"}
+                </button>
+              </div>
+              {/* ✅ feedback em tempo real abaixo do campo */}
+              {mostrouFeedbackConfirmar && (
+                <p
+                  style={{
+                    color: senhasIguais ? "green" : "red",
+                    fontSize: "0.9rem",
+                    marginTop: "5px",
+                  }}
+                >
+                  {senhasIguais ? "As senhas coincidem ✅" : "As senhas não coincidem ❌"}
+                </p>
+              )}
             </label>
 
             <label>
