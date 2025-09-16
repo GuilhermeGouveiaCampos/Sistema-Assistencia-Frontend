@@ -3,8 +3,6 @@ import React, { useState } from "react";
 import "./RecuperarSenha.css";
 import { useNavigate } from "react-router-dom";
 import ModalLoginSucesso from "../../components/ModalLoginSucesso";
-
-// ✅ cliente axios central (usa import.meta.env.VITE_API_URL)
 import api from "../../services/api";
 
 const formatarCPF = (valor: string): string =>
@@ -59,7 +57,6 @@ const RecuperarSenha: React.FC = () => {
     try {
       setLoading(true);
 
-      // ✅ chamada via API central
       await api.post("/api/usuarios/reset-senha", {
         cpf: cpf.replace(/\D/g, ""),
         nova_senha: novaSenha,
@@ -72,6 +69,11 @@ const RecuperarSenha: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const goLogin = () => {
+    setShowModal(false);
+    navigate("/login");
   };
 
   return (
@@ -158,10 +160,10 @@ const RecuperarSenha: React.FC = () => {
           titulo="✅ Sucesso!"
           mensagem="Senha redefinida com sucesso! Faça login com a nova senha."
           botaoLabel="Ir para o login"
-          onClose={() => {
-            setShowModal(false);
-            navigate("/login");
-          }}
+          // ✅ Adicionados para atender a tipagem atual do modal:
+          onClose={goLogin}
+          onTimeout={goLogin}
+          initialSeconds={3} // opcional: contador curtinho aqui
         />
       )}
     </div>
