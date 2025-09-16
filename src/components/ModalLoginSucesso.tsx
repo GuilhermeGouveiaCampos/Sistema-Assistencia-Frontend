@@ -1,40 +1,61 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
 interface ModalLoginSucessoProps {
-  onClose: () => void;
-  nome?: string;                 // opcional
-  titulo?: string;               // opcional
-  mensagem?: React.ReactNode;    // opcional (pode ser string ou JSX)
-  botaoLabel?: string;           // opcional
+  onClose: () => void;              // fechar agora (pula a espera)
+  onTimeout: () => void;            // chamado quando o contador chega a 0
+  nome?: string;                    // opcional
+  titulo?: string;                  // opcional
+  mensagem?: React.ReactNode;       // opcional (string ou JSX)
+  botaoLabel?: string;              // opcional
+  initialSeconds?: number;          // segundos de contagem (default 5)
 }
 
 const ModalLoginSucesso: React.FC<ModalLoginSucessoProps> = ({
   onClose,
+  onTimeout,
   nome,
   titulo,
   mensagem,
   botaoLabel,
+  initialSeconds = 5,
 }) => {
+  const [seconds, setSeconds] = useState<number>(initialSeconds);
+  const intervalRef = useRef<number | null>(null);
+
   const tituloFinal = titulo ?? "✅ Bem-vindo!";
   const mensagemFinal =
-    mensagem ??
-    (
+    mensagem ?? (
       <>
         Olá, <strong>{nome ?? "usuário"}</strong> 👋
         <br />
-        Seu login foi realizado com sucesso.
+        Login realizado com sucesso.
       </>
     );
+
+  useEffect(() => {
+    // inicia contagem regressiva
+    intervalRef.current = window.setInterval(() => {
+      setSeconds((s) => s - 1);
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (seconds <= 0) {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      onTimeout(); // aciona redirecionamento
+    }
+  }, [seconds, onTimeout]);
 
   return ReactDOM.createPortal(
     <div
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
+        inset: 0,
         backgroundColor: "rgba(0, 0, 0, 0.6)",
         display: "flex",
         justifyContent: "center",
@@ -50,16 +71,21 @@ const ModalLoginSucesso: React.FC<ModalLoginSucessoProps> = ({
           borderRadius: "12px",
           boxShadow: "0 0 15px rgba(0, 255, 128, 0.4)",
           textAlign: "center",
-          maxWidth: "420px",
-          width: "90%",
+          maxWidth: "460px",
+          width: "92%",
         }}
       >
-        <h2 style={{ marginBottom: "15px", color: "#00ff99" }}>{tituloFinal}</h2>
+        <h2 style={{ marginBottom: "10px", color: "#00ff99" }}>{tituloFinal}</h2>
         <p style={{ fontSize: "1.05rem", lineHeight: 1.5 }}>{mensagemFinal}</p>
+
+        <div style={{ marginTop: 12, fontSize: "0.95rem", opacity: 0.9 }}>
+          Redirecionando para a dashboard em <strong>{seconds}s</strong>…
+        </div>
+
         <button
           onClick={onClose}
           style={{
-            marginTop: "20px",
+            marginTop: "18px",
             padding: "10px 20px",
             borderRadius: "8px",
             border: "none",
@@ -69,7 +95,7 @@ const ModalLoginSucesso: React.FC<ModalLoginSucessoProps> = ({
             cursor: "pointer",
           }}
         >
-          {botaoLabel ?? "Continuar"}
+          {botaoLabel ?? "Ir agora"}
         </button>
       </div>
     </div>,

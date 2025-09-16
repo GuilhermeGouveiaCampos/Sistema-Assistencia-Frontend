@@ -1,4 +1,3 @@
-// src/pages/login/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ModalLoginSucesso from "../../components/ModalLoginSucesso";
@@ -63,17 +62,14 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      // Envie o CPF somente com dígitos
       const cpfLimpo = cpf.replace(/\D/g, "");
       const res = await api.post("/api/login", { cpf: cpfLimpo, senha: senha.trim() });
-
       const data = res.data || {};
 
       // Salva dados retornados
       if (data.token) localStorage.setItem("token", data.token);
       if (data.nome) localStorage.setItem("nome", data.nome);
 
-      // ⬇️ O backend retorna `id`, não `id_usuario`
       if (data.id != null) {
         localStorage.setItem("id", String(data.id));
       } else if (data.id_usuario != null) {
@@ -90,17 +86,12 @@ const Login: React.FC = () => {
         localStorage.removeItem("genero");
       }
 
-      // 👉 Redireciona imediatamente para a dashboard (sem modal)
-      navigate("/dashboard", { replace: true });
-      return;
-
-      // (as linhas abaixo foram removidas por não serem mais necessárias)
-      // setNomeUsuario(data.nome || "Usuário");
-      // setShowModal(true);
+      // ✅ Exibe modal (5s) e só então navega
+      setNomeUsuario(data.nome || "Usuário");
+      setShowModal(true);
     } catch (err: any) {
       console.error("❌ Erro no login:", err);
 
-      // tenta extrair mensagem do backend
       const msg =
         err?.response?.data?.erro ||
         err?.response?.data?.mensagem ||
@@ -132,7 +123,7 @@ const Login: React.FC = () => {
               maxLength={14}
               autoComplete="username"
             />
-          {cpf.length === 14 && (
+            {cpf.length === 14 && (
               <span style={{ color: cpfValido ? "lightgreen" : "red", fontSize: "0.8rem" }}>
                 {cpfValido ? "CPF válido" : "CPF inválido"}
               </span>
@@ -197,11 +188,23 @@ const Login: React.FC = () => {
         <img src="/eletricista.png" alt="Ilustração técnico" className="ilustracao" />
       </div>
 
-      {/* modal permanece no arquivo, mas não será exibido pois não setamos showModal */}
       {showModal && (
         <ModalLoginSucesso
           nome={nomeUsuario}
+          initialSeconds={5}
+          mensagem={
+            <>
+              Olá, <strong>{nomeUsuario || "usuário"}</strong> 👋
+              <br />
+              Login realizado com sucesso.
+            </>
+          }
+          botaoLabel="Ir agora"
           onClose={() => {
+            setShowModal(false);
+            navigate("/dashboard", { replace: true });
+          }}
+          onTimeout={() => {
             setShowModal(false);
             navigate("/dashboard", { replace: true });
           }}
@@ -212,3 +215,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+  

@@ -1,6 +1,7 @@
 // src/App.tsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import IdleLogout from "./components/IdleLogout";
 
 // Telas principais
 import Dashboard from "./pages/dashboard/Dashboard";
@@ -49,55 +50,58 @@ import OrdemDetalhe from "./pages/ordem/OrdemDetalhe";
 
 const App: React.FC = () => {
   return (
-    <Routes>
-      {/* rotas públicas */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+    <>
+      {/* Observa inatividade em TODAS as páginas */}
+      <IdleLogout timeoutMs={600_000} /> {/* 10 min */}
 
-      {/* rotas privadas (guardadas pelo PrivateRoute) */}
-      <Route element={<PrivateRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
+      <Routes>
+        {/* públicas */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/recuperar-senha" element={<RecuperarSenha />} />
 
-        <Route path="/clientes" element={<Clientes />} />
-        <Route path="/clientes/inativos" element={<ClientesInativos />} />
-        <Route path="/clientes/cadastrar" element={<CadastrarCliente />} />
-        <Route path="/clientes/editar" element={<AlterarCliente />} />
+        {/* privadas */}
+        <Route element={<PrivateRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
 
-        <Route path="/equipamentos" element={<Equipamentos />} />
-        <Route path="/equipamentos/inativos" element={<EquipamentosInativos />} />
-        <Route path="/equipamentos/cadastrar" element={<CadastrarEquipamento />} />
-        <Route path="/equipamentos/detalhes/:id" element={<DetalhesEquipamento />} />
-        <Route path="/equipamentos/editar" element={<AlterarEquipamento />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/clientes/inativos" element={<ClientesInativos />} />
+          <Route path="/clientes/cadastrar" element={<CadastrarCliente />} />
+          <Route path="/clientes/editar" element={<AlterarCliente />} />
 
-        <Route path="/rfid" element={<RFID />} />
-        <Route path="/rfid/cadastrar" element={<CadastrarRFID />} />
-        <Route path="/rfid/editar" element={<EditarRFID />} />
-        <Route path="/rfid/inativos" element={<LocaisInativos />} />
+          <Route path="/equipamentos" element={<Equipamentos />} />
+          <Route path="/equipamentos/inativos" element={<EquipamentosInativos />} />
+          <Route path="/equipamentos/cadastrar" element={<CadastrarEquipamento />} />
+          <Route path="/equipamentos/detalhes/:id" element={<DetalhesEquipamento />} />
+          <Route path="/equipamentos/editar" element={<AlterarEquipamento />} />
 
-        <Route path="/tecnicos" element={<Tecnicos />} />
-        <Route path="/tecnicos/cadastrar" element={<CadastrarTecnico />} />
-        <Route path="/tecnicos/editar" element={<AlterarTecnico />} />
-        <Route path="/tecnicos/inativos" element={<TecnicosInativos />} />
-        <Route path="/tecnicos/atribuicoes" element={<TecnicosAtribuicoes />} />
+          <Route path="/rfid" element={<RFID />} />
+          <Route path="/rfid/cadastrar" element={<CadastrarRFID />} />
+          <Route path="/rfid/editar" element={<EditarRFID />} />
+          <Route path="/rfid/inativos" element={<LocaisInativos />} />
 
-        <Route path="/usuarios" element={<Usuarios />} />
-        <Route path="/usuarios/cadastrar" element={<CadastrarUsuario />} />
-        <Route path="/usuarios/editar" element={<EditarUsuario />} />
-        <Route path="/usuarios/inativos" element={<UsuariosInativos />} />
+          <Route path="/tecnicos" element={<Tecnicos />} />
+          <Route path="/tecnicos/cadastrar" element={<CadastrarTecnico />} />
+          <Route path="/tecnicos/editar" element={<AlterarTecnico />} />
+          <Route path="/tecnicos/inativos" element={<TecnicosInativos />} />
+          <Route path="/tecnicos/atribuicoes" element={<TecnicosAtribuicoes />} />
 
-        <Route path="/ordemservico" element={<OrdensServico />} />
-        <Route path="/ordemservico/cadastrar" element={<CadastrarOrdem />} />
-        <Route path="/ordemservico/alterar" element={<AlterarOrdem />} />
-        <Route path="/ordemservico/inativos" element={<OrdensInativas />} />
-        <Route path="/ordemservico/detalhes/:id" element={<OrdemDetalhe />} />
-      </Route>
+          <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/usuarios/cadastrar" element={<CadastrarUsuario />} />
+          <Route path="/usuarios/editar" element={<EditarUsuario />} />
+          <Route path="/usuarios/inativos" element={<UsuariosInativos />} />
 
-      {/* raíz → dashboard (o guard decide se manda pro login) */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/ordemservico" element={<OrdensServico />} />
+          <Route path="/ordemservico/cadastrar" element={<CadastrarOrdem />} />
+          <Route path="/ordemservico/alterar" element={<AlterarOrdem />} />
+          <Route path="/ordemservico/inativos" element={<OrdensInativas />} />
+          <Route path="/ordemservico/detalhes/:id" element={<OrdemDetalhe />} />
+        </Route>
 
-      {/* catch-all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        {/* raiz/catch-all */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </>
   );
 };
 
