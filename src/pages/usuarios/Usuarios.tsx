@@ -163,13 +163,13 @@ const Usuarios: React.FC = () => {
       </section>
 
       {mostrarModal && usuarioAtual && (
-        <ConfirmarExclusao
-          nome={usuarioAtual.nome}
-          entidadeLabel="Usuário"
-          onConfirmar={excluirUsuario}
-          onFechar={() => setMostrarModal(false)}
-        />
-      )}
+  <ConfirmarExclusao
+    entidadeLabel="Usuário"
+    nome={usuarioAtual.nome}
+    onConfirmar={excluirUsuario}
+    onFechar={() => setMostrarModal(false)}
+  />
+)}
     </MenuLateral>
   );
 };

@@ -202,12 +202,14 @@ const Equipamentos: React.FC = () => {
       </section>
 
       {mostrarModal && equipamentoAtual && (
-        <ConfirmarExclusao
-          nomeCliente={`${equipamentoAtual.nome_cliente} - ${equipamentoAtual.tipo} - ${equipamentoAtual.numero_serie}`}
-          onConfirmar={excluirEquipamento}
-          onFechar={() => setMostrarModal(false)}
-        />
-      )}
+  <ConfirmarExclusao
+    entidadeLabel="Equipamento"
+    nome={`${equipamentoAtual.nome_cliente} - ${equipamentoAtual.tipo} - ${equipamentoAtual.numero_serie}`}
+    onConfirmar={excluirEquipamento}
+    onFechar={() => setMostrarModal(false)}
+  />
+)}
+
     </MenuLateral>
   );
 };

@@ -204,12 +204,14 @@ const Tecnicos: React.FC = () => {
       </section>
 
       {mostrarModal && tecnicoAtual && (
-        <ConfirmarExclusao
-          nomeCliente={tecnicoAtual.nome}
-          onConfirmar={excluirTecnico}
-          onFechar={() => setMostrarModal(false)}
-        />
-      )}
+  <ConfirmarExclusao
+    entidadeLabel="Técnico"
+    nome={tecnicoAtual.nome}
+    onConfirmar={excluirTecnico}
+    onFechar={() => setMostrarModal(false)}
+  />
+)}
+
     </MenuLateral>
   );
 };
