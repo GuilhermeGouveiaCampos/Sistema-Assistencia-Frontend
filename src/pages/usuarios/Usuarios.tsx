@@ -7,7 +7,6 @@ import '../Css/Cadastrar.css';
 import '../Css/Pesquisa.css';
 import MenuLateral from "../../components/MenuLateral";
 
-// ✅ Cliente axios centralizado (usa import.meta.env.VITE_API_URL)
 import api from "../../services/api";
 
 interface Usuario {
@@ -165,7 +164,8 @@ const Usuarios: React.FC = () => {
 
       {mostrarModal && usuarioAtual && (
         <ConfirmarExclusao
-          nomeCliente={usuarioAtual.nome}
+          nome={usuarioAtual.nome}
+          entidadeLabel="Usuário"
           onConfirmar={excluirUsuario}
           onFechar={() => setMostrarModal(false)}
         />
