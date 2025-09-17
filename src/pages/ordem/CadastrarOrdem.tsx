@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../dashboard/Dashboard.css';
 import '../Css/Cadastrar.css';
-import { buscarTecnicoMenosCarregado } from '../../services/tecnicosService';
 import ModalSucesso from '../../components/ModalSucesso';
 import MenuLateral from '../../components/MenuLateral';
 
@@ -69,24 +68,20 @@ const CadastrarOrdem: React.FC = () => {
     return hoje.toISOString().split('T')[0]; // ✅ yyyy-MM-dd
   });
 
-  const [showDropdownEquip, setShowDropdownEquip] = useState(false);
-
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [showDropdownTecnico, setShowDropdownTecnico] = useState(false);
   const [selectedTecnicoId, setSelectedTecnicoId] = useState<number | null>(null);
 
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [idEquipamento, setIdEquipamento] = useState('');
   const [selectedEquipamentoId, setSelectedEquipamentoId] = useState<number | null>(null);
 
   const [statusLista, setStatusLista] = useState<any[]>([]);
   const statusDescricao = statusLista.find(s => s.id_status === Number(statusInterno))?.descricao || '';
-  const [showTecnicoAutoModal, setShowTecnicoAutoModal] = useState(false);
 
   /** ------------ IMAGENS: estado e refs ------------ */
   const [imagens, setImagens] = useState<PreviewFile[]>([]);
+  const [imagensErro, setImagensErro] = useState<string>(''); // ✅ erro/validação
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -126,7 +121,7 @@ const CadastrarOrdem: React.FC = () => {
       })
       .catch(err => console.error("Erro ao buscar locais:", err));
 
-    // cleanup dos object URLs se o usuário sair da página
+    // cleanup URLs ao desmontar
     return () => {
       imagens.forEach(p => URL.revokeObjectURL(p.url));
     };
@@ -137,45 +132,29 @@ const CadastrarOrdem: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // ✅ imagens são obrigatórias
+    if (imagens.length === 0) {
+      setImagensErro('Adicione pelo menos 1 imagem da OS.');
+      document.getElementById('secao-imagens')?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
     try {
-      // Quando houver imagens, enviamos tudo via FormData (multipart)
-      if (imagens.length > 0) {
-        const form = new FormData();
-        if (selectedClienteId != null) form.append('id_cliente', String(selectedClienteId));
-        if (selectedTecnicoId != null) form.append('id_tecnico', String(selectedTecnicoId));
-        if (selectedEquipamentoId != null) form.append('id_equipamento', String(selectedEquipamentoId));
-        form.append('id_local', idLocal);
-        form.append('id_status_os', String(statusInterno));
-        form.append('descricao_problema', descricaoProblema);
-        form.append('data_criacao', dataCriacao);
+      // Envio via FormData (sempre, já que imagens são obrigatórias)
+      const form = new FormData();
+      if (selectedClienteId != null) form.append('id_cliente', String(selectedClienteId));
+      if (selectedTecnicoId != null) form.append('id_tecnico', String(selectedTecnicoId));
+      if (selectedEquipamentoId != null) form.append('id_equipamento', String(selectedEquipamentoId));
+      form.append('id_local', idLocal);
+      form.append('id_status_os', String(statusInterno));
+      form.append('descricao_problema', descricaoProblema);
+      form.append('data_criacao', dataCriacao);
 
-        imagens.forEach(p => form.append('imagens', p.file));
+      imagens.forEach(p => form.append('imagens', p.file));
 
-        const response = await api.post('/api/ordens', form, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-
-        console.log("🟢 RESPOSTA:", response.status, response.data);
-
-        if (response.status === 201) {
-          setShowSuccessModal(true);
-        }
-      } else {
-        // Sem imagens → JSON como antes
-        const response = await api.post('/api/ordens', {
-          id_cliente: selectedClienteId,
-          id_tecnico: selectedTecnicoId,
-          id_equipamento: selectedEquipamentoId,
-          id_local: idLocal,
-          id_status_os: Number(statusInterno),
-          descricao_problema: descricaoProblema,
-          data_criacao: dataCriacao
-        });
-
-        console.log("🟢 RESPOSTA:", response.status, response.data);
-        if (response.status === 201) {
-          setShowSuccessModal(true);
-        }
+      const response = await api.post('/api/ordens', form); // deixa o axios definir boundary
+      if (response.status === 201) {
+        setShowSuccessModal(true);
       }
     } catch (error: any) {
       console.error("❌ Erro ao cadastrar OS:", error);
@@ -204,7 +183,7 @@ const CadastrarOrdem: React.FC = () => {
       setIdTecnico(`${tecnico.nome} - AUTO`);
       setSelectedTecnicoId(tecnico.id_tecnico);
 
-      // ✅ Toast de sucesso
+      // Toast de sucesso
       const toast = document.createElement('div');
       toast.textContent = `👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`;
       toast.style.cssText = `
@@ -220,7 +199,7 @@ const CadastrarOrdem: React.FC = () => {
     } catch (error: any) {
       console.error("Erro ao buscar técnico automaticamente:", error);
 
-      // 🟠 Toast de aviso
+      // Toast de aviso
       const aviso = document.createElement('div');
       aviso.textContent = "⚠️ Nenhum técnico disponível com essa especialização. Escolha manualmente.";
       aviso.style.cssText = `
@@ -281,6 +260,7 @@ const CadastrarOrdem: React.FC = () => {
       atuais.push(preview);
     }
     setImagens(atuais);
+    setImagensErro(''); // limpamos o erro se o usuário adicionou algo
 
     // limpa o input pra permitir adicionar o mesmo arquivo novamente se quiser
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -290,13 +270,16 @@ const CadastrarOrdem: React.FC = () => {
     setImagens((prev) => {
       const alvo = prev.find(p => p.id === id);
       if (alvo) URL.revokeObjectURL(alvo.url);
-      return prev.filter(p => p.id !== id);
+      const novo = prev.filter(p => p.id !== id);
+      if (novo.length === 0) setImagensErro('Adicione pelo menos 1 imagem da OS.'); // se remover todas
+      return novo;
     });
   };
 
   const limparTodasImagens = () => {
     imagens.forEach(p => URL.revokeObjectURL(p.url));
     setImagens([]);
+    setImagensErro('Adicione pelo menos 1 imagem da OS.');
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -448,10 +431,10 @@ const CadastrarOrdem: React.FC = () => {
               />
             </label>
 
-            {/* ====== IMAGENS (NOVO) ====== */}
-            <div style={{ marginTop: 16 }}>
-              <span style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-                📷 IMAGENS (opcional)
+            {/* ====== IMAGENS (AGORA OBRIGATÓRIAS) ====== */}
+            <div id="secao-imagens" style={{ marginTop: 16 }}>
+              <span style={{ display: "block", marginBottom: 6, fontWeight: 700 }}>
+                📷 IMAGENS <span style={{ color: '#ff4d4f' }}>(obrigatório)</span>
               </span>
 
               <div
@@ -506,6 +489,13 @@ const CadastrarOrdem: React.FC = () => {
                 style={{ display: "none" }}
               />
 
+              {/* mensagem de erro */}
+              {imagensErro && (
+                <div style={{ color: '#ff4d4f', marginTop: 8, fontWeight: 600 }}>
+                  {imagensErro}
+                </div>
+              )}
+
               {/* GRID de previews */}
               {imagens.length > 0 && (
                 <div
@@ -540,8 +530,8 @@ const CadastrarOrdem: React.FC = () => {
                           position: "absolute",
                           top: 6,
                           right: 6,
-                          background: "rgba(0,0,0,0.65)",
-                          border: "1px solid #666",
+                          background: "#ff4d4f",   // ✅ Lixeira vermelha
+                          border: "1px solid #cc3a3c",
                           color: "#fff",
                           borderRadius: 6,
                           padding: "4px 6px",
@@ -559,7 +549,9 @@ const CadastrarOrdem: React.FC = () => {
             {/* ====== /IMAGENS ====== */}
 
             <div className="acoes-clientes" style={{ marginTop: 16 }}>
-              <button type="submit" className="btn azul">SALVAR</button>
+              <button type="submit" className="btn azul" disabled={imagens.length === 0}>
+                SALVAR
+              </button>
               <button type="button" className="btn preto" onClick={() => navigate('/ordemservico')}>CANCELAR</button>
             </div>
           </form>
