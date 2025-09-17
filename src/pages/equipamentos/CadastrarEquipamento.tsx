@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuLateral from "../../components/MenuLateral";
 import "../dashboard/Dashboard.css";
@@ -33,6 +33,20 @@ interface ClienteOption {
   cpf: string;
 }
 
+/** ====== Imagens (mesmo comportamento da tela de OS) ====== */
+type PreviewFile = {
+  id: string;
+  file: File;
+  url: string;
+  name: string;
+  size: number;
+};
+
+const genId = () =>
+  (window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
+
 const CadastrarEquipamento: React.FC = () => {
   const navigate = useNavigate();
 
@@ -48,7 +62,6 @@ const CadastrarEquipamento: React.FC = () => {
     numero_serie: "",
   });
   const [cpfCliente, setCpfCliente] = useState<string>("");
-  const [imagens, setImagens] = useState<File[]>([]);
   const [mostrarModalSucesso, setMostrarModalSucesso] = useState(false);
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
 
@@ -94,8 +107,56 @@ const CadastrarEquipamento: React.FC = () => {
     }),
   };
 
-  const removerImagem = (index: number) => {
-    setImagens((prev) => prev.filter((_, i) => i !== index));
+  /** ====== Estado e handlers de imagens (igual OS) ====== */
+  const [imagens, setImagens] = useState<PreviewFile[]>([]);
+  const [imagensErro, setImagensErro] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const removerImagem = (id: string) => {
+    setImagens((prev) => {
+      const alvo = prev.find((p) => p.id === id);
+      if (alvo) URL.revokeObjectURL(alvo.url);
+      const novo = prev.filter((p) => p.id !== id);
+      if (novo.length === 0) setImagensErro("Adicione pelo menos 1 imagem do equipamento.");
+      return novo;
+    });
+  };
+
+  const limparTodasImagens = () => {
+    imagens.forEach((p) => URL.revokeObjectURL(p.url));
+    setImagens([]);
+    setImagensErro("Adicione pelo menos 1 imagem do equipamento.");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSelectImagens = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const accepted = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"];
+    const maxEach = 5 * 1024 * 1024; // 5MB
+    const maxTotal = 20;
+
+    const atuais = [...imagens];
+    for (const f of files) {
+      if (!accepted.includes(f.type)) continue;
+      if (f.size > maxEach) continue;
+      if (atuais.length >= maxTotal) break;
+
+      const preview: PreviewFile = {
+        id: genId(),
+        file: f,
+        url: URL.createObjectURL(f),
+        name: f.name,
+        size: f.size,
+      };
+      atuais.push(preview);
+    }
+    setImagens(atuais);
+    setImagensErro("");
+
+    // permite re-selecionar o mesmo arquivo
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   useEffect(() => {
@@ -132,6 +193,14 @@ const CadastrarEquipamento: React.FC = () => {
     }
   }, []);
 
+  // cleanup dos Object URLs ao sair da tela
+  useEffect(() => {
+    return () => {
+      imagens.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -145,15 +214,15 @@ const CadastrarEquipamento: React.FC = () => {
     setFormulario({ ...formulario, [name]: value });
   };
 
-  const handleImagemChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files).slice(0, 20);
-      setImagens((prev) => [...prev, ...selectedFiles]);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // imagens obrigatórias (igual OS)
+    if (imagens.length === 0) {
+      setImagensErro("Adicione pelo menos 1 imagem do equipamento.");
+      document.getElementById("secao-imagens-eqp")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
 
     const dados = new FormData();
     dados.append("id_cliente", formulario.id_cliente);
@@ -163,13 +232,14 @@ const CadastrarEquipamento: React.FC = () => {
     dados.append("numero_serie", formulario.numero_serie);
     dados.append("status", "ativo");
 
-    imagens.forEach((imagem) => {
-      dados.append("imagens", imagem);
+    imagens.forEach((p) => {
+      dados.append("imagens", p.file);
     });
 
     try {
       const response = await api.post("/api/equipamentos", dados, {
-        headers: { "Content-Type": "multipart/form-data" },
+        // axios define o boundary automaticamente
+        headers: { "Accept": "application/json" },
       });
 
       if (response.status === 201 || response.status === 200) {
@@ -321,37 +391,130 @@ const CadastrarEquipamento: React.FC = () => {
               />
             </label>
 
-            <label>
-              <span>📷 FOTOS DO EQUIPAMENTO</span>
+            {/* ====== IMAGENS (igual OS) ====== */}
+            <div id="secao-imagens-eqp" style={{ marginTop: 16 }}>
+              <span style={{ display: "block", marginBottom: 6, fontWeight: 700 }}>
+                📷 IMAGENS <span style={{ color: "#ff4d4f" }}>(obrigatório)</span>
+              </span>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <label
+                  htmlFor="imagens-equipo"
+                  style={{
+                    border: "1px dashed #777",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    background: "#0c0c0c",
+                  }}
+                  title="Clique para selecionar imagens"
+                >
+                  + Adicionar imagens
+                </label>
+
+                {imagens.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={limparTodasImagens}
+                    style={{
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      cursor: "pointer",
+                      background: "#444",
+                      color: "#fff",
+                    }}
+                    title="Remover todas as imagens selecionadas"
+                  >
+                    Limpar todas
+                  </button>
+                )}
+              </div>
+
               <input
+                id="imagens-equipo"
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={handleImagemChange}
+                onChange={handleSelectImagens}
+                style={{ display: "none" }}
               />
+
+              {/* erro/validação */}
+              {imagensErro && (
+                <div style={{ color: "#ff4d4f", marginTop: 8, fontWeight: 600 }}>
+                  {imagensErro}
+                </div>
+              )}
+
+              {/* GRID de previews */}
               {imagens.length > 0 && (
-                <div className="preview-imagens">
-                  {imagens.map((img, index) => (
-                    <div key={index} className="preview-item">
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {imagens.map((img) => (
+                    <div
+                      key={img.id}
+                      style={{
+                        position: "relative",
+                        border: "1px solid #333",
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        background: "#111",
+                      }}
+                    >
                       <img
-                        src={URL.createObjectURL(img)}
-                        alt={`Prévia ${index + 1}`}
+                        src={img.url}
+                        alt={img.name}
+                        style={{
+                          width: "100%",
+                          height: 120,
+                          objectFit: "cover",
+                          display: "block",
+                        }}
                       />
                       <button
                         type="button"
-                        onClick={() => removerImagem(index)}
-                        className="btn-remover"
+                        onClick={() => removerImagem(img.id)}
+                        title="Remover imagem"
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          background: "#ff4d4f", // lixeira vermelha
+                          border: "1px solid #cc3a3c",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "4px 6px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
                       >
-                        ❌
+                        🗑️
                       </button>
                     </div>
                   ))}
                 </div>
               )}
-            </label>
+            </div>
+            {/* ====== /IMAGENS ====== */}
 
-            <div className="acoes-clientes">
-              <button type="submit" className="btn azul">
+            <div className="acoes-clientes" style={{ marginTop: 16 }}>
+              <button type="submit" className="btn azul" disabled={imagens.length === 0}>
                 SALVAR
               </button>
               <button

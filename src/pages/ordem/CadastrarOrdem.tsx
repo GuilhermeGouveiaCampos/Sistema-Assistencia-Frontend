@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../dashboard/Dashboard.css';
 import '../Css/Cadastrar.css';
@@ -35,37 +35,20 @@ interface Equipamento {
   numero_serie: string;
 }
 
-/** ------------ IMAGENS: tipos auxiliares ------------ */
-type PreviewFile = {
-  id: string;
-  file: File;
-  url: string;
-  name: string;
-  size: number;
-};
-
-const genId = () =>
-  (window.crypto?.randomUUID
-    ? window.crypto.randomUUID()
-    : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
-
 const CadastrarOrdem: React.FC = () => {
   const navigate = useNavigate();
-  const nomeUsuario = localStorage.getItem("nome") || "Usuário";
-  const idUsuario = localStorage.getItem("id") || "";
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [locais, setLocais] = useState<Local[]>([]);
   const [statusInterno, setStatusInterno] = useState('');
 
-  const [idCliente, setIdCliente] = useState('');
   const [idTecnico, setIdTecnico] = useState('');
   const [idLocal, setIdLocal] = useState('');
   const [descricaoProblema, setDescricaoProblema] = useState('');
   const [dataCriacao, setDataCriacao] = useState(() => {
     const hoje = new Date();
-    return hoje.toISOString().split('T')[0]; // ✅ yyyy-MM-dd
+    return hoje.toISOString().split('T')[0]; // yyyy-MM-dd
   });
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -77,88 +60,60 @@ const CadastrarOrdem: React.FC = () => {
   const [selectedEquipamentoId, setSelectedEquipamentoId] = useState<number | null>(null);
 
   const [statusLista, setStatusLista] = useState<any[]>([]);
-  const statusDescricao = statusLista.find(s => s.id_status === Number(statusInterno))?.descricao || '';
-
-  /** ------------ IMAGENS: estado e refs ------------ */
-  const [imagens, setImagens] = useState<PreviewFile[]>([]);
-  const [imagensErro, setImagensErro] = useState<string>(''); // ✅ erro/validação
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const statusDescricao =
+    statusLista.find((s) => s.id_status === Number(statusInterno))?.descricao || '';
 
   useEffect(() => {
     // Carregar clientes
     api.get('/api/ordens/clientes')
-      .then(res => setClientes(res.data))
-      .catch(err => console.error("Erro ao buscar clientes:", err));
+      .then((res) => setClientes(res.data))
+      .catch((err) => console.error('Erro ao buscar clientes:', err));
 
     // Carregar técnicos
     api.get('/api/tecnicos')
-      .then(res => setTecnicos(res.data))
-      .catch(err => console.error("Erro ao buscar técnicos:", err));
+      .then((res) => setTecnicos(res.data))
+      .catch((err) => console.error('Erro ao buscar técnicos:', err));
 
     // Carregar status da OS
     api.get('/api/status')
-      .then(res => {
+      .then((res) => {
         setStatusLista(res.data);
         const statusRecebido = res.data.find((s: any) =>
-          String(s.descricao || '').toLowerCase().includes("recebido")
+          String(s.descricao || '').toLowerCase().includes('recebido')
         );
-        if (statusRecebido) {
-          setStatusInterno(statusRecebido.id_status);
-        }
+        if (statusRecebido) setStatusInterno(statusRecebido.id_status);
       })
-      .catch(err => console.error("Erro ao buscar status:", err));
+      .catch((err) => console.error('Erro ao buscar status:', err));
 
     // Buscar locais
     api.get('/api/locais')
-      .then(res => {
+      .then((res) => {
         setLocais(res.data);
         const recepcao = (res.data as Local[]).find((loc: Local) =>
-          String(loc.local_instalado || '').toLowerCase().includes("recepção")
+          String(loc.local_instalado || '').toLowerCase().includes('recepção')
         );
-        if (recepcao) {
-          setIdLocal(recepcao.id_scanner);
-        }
+        if (recepcao) setIdLocal(recepcao.id_scanner);
       })
-      .catch(err => console.error("Erro ao buscar locais:", err));
-
-    // cleanup URLs ao desmontar
-    return () => {
-      imagens.forEach(p => URL.revokeObjectURL(p.url));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((err) => console.error('Erro ao buscar locais:', err));
   }, []);
 
-  /** ------------ SUBMIT ------------ */
+  /** ------------ SUBMIT (sem upload de imagens) ------------ */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // ✅ imagens são obrigatórias
-    if (imagens.length === 0) {
-      setImagensErro('Adicione pelo menos 1 imagem da OS.');
-      document.getElementById('secao-imagens')?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
-
     try {
-      // Envio via FormData (sempre, já que imagens são obrigatórias)
-      const form = new FormData();
-      if (selectedClienteId != null) form.append('id_cliente', String(selectedClienteId));
-      if (selectedTecnicoId != null) form.append('id_tecnico', String(selectedTecnicoId));
-      if (selectedEquipamentoId != null) form.append('id_equipamento', String(selectedEquipamentoId));
-      form.append('id_local', idLocal);
-      form.append('id_status_os', String(statusInterno));
-      form.append('descricao_problema', descricaoProblema);
-      form.append('data_criacao', dataCriacao);
-
-      imagens.forEach(p => form.append('imagens', p.file));
-
-      const response = await api.post('/api/ordens', form); // deixa o axios definir boundary
-      if (response.status === 201) {
-        setShowSuccessModal(true);
-      }
+      const response = await api.post('/api/ordens', {
+        id_cliente: selectedClienteId,
+        id_tecnico: selectedTecnicoId,
+        id_equipamento: selectedEquipamentoId,
+        id_local: idLocal,
+        id_status_os: Number(statusInterno),
+        descricao_problema: descricaoProblema,
+        data_criacao: dataCriacao,
+      });
+      if (response.status === 201) setShowSuccessModal(true);
     } catch (error: any) {
-      console.error("❌ Erro ao cadastrar OS:", error);
-      alert(error?.response?.data?.erro || "Erro ao cadastrar ordem de serviço.");
+      console.error('❌ Erro ao cadastrar OS:', error);
+      alert(error?.response?.data?.erro || 'Erro ao cadastrar ordem de serviço.');
     }
   };
 
@@ -167,14 +122,13 @@ const CadastrarOrdem: React.FC = () => {
     const equipamentoId = Number(e.target.value);
     setSelectedEquipamentoId(equipamentoId);
 
-    const equipamentoSelecionado = equipamentos.find(eq => eq.id_equipamento === equipamentoId);
+    const equipamentoSelecionado = equipamentos.find((eq) => eq.id_equipamento === equipamentoId);
     if (!equipamentoSelecionado) {
-      alert("Equipamento não encontrado.");
+      alert('Equipamento não encontrado.');
       return;
     }
 
     const tipoEquipamento = equipamentoSelecionado.tipo;
-
     try {
       const encodedTipo = encodeURIComponent(tipoEquipamento);
       const response = await api.get(`/api/tecnicos/menos-carregados/${encodedTipo}`);
@@ -183,31 +137,24 @@ const CadastrarOrdem: React.FC = () => {
       setIdTecnico(`${tecnico.nome} - AUTO`);
       setSelectedTecnicoId(tecnico.id_tecnico);
 
-      // Toast de sucesso
+      // Toast simples
       const toast = document.createElement('div');
       toast.textContent = `👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`;
       toast.style.cssText = `
-        position: fixed;
-        top: 20px; right: 20px;
-        background: #4caf50; color: white;
-        padding: 10px 15px; border-radius: 5px;
-        z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        position: fixed; top: 20px; right: 20px;
+        background: #4caf50; color: white; padding: 10px 15px;
+        border-radius: 5px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       `;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 3500);
-
     } catch (error: any) {
-      console.error("Erro ao buscar técnico automaticamente:", error);
-
-      // Toast de aviso
+      console.error('Erro ao buscar técnico automaticamente:', error);
       const aviso = document.createElement('div');
-      aviso.textContent = "⚠️ Nenhum técnico disponível com essa especialização. Escolha manualmente.";
+      aviso.textContent = '⚠️ Nenhum técnico disponível com essa especialização. Escolha manualmente.';
       aviso.style.cssText = `
-        position: fixed;
-        top: 20px; right: 20px;
-        background: #ff9800; color: white;
-        padding: 10px 15px; border-radius: 5px;
-        z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        position: fixed; top: 20px; right: 20px;
+        background: #ff9800; color: white; padding: 10px 15px;
+        border-radius: 5px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       `;
       document.body.appendChild(aviso);
       setTimeout(() => aviso.remove(), 3500);
@@ -217,12 +164,11 @@ const CadastrarOrdem: React.FC = () => {
   const handleClienteChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clienteId = Number(e.target.value);
     setSelectedClienteId(clienteId);
-    setIdCliente(clienteId.toString());
     try {
       const response = await api.get(`/api/equipamentos/por-cliente/${clienteId}`);
       setEquipamentos(response.data);
     } catch (error) {
-      console.error("Erro ao buscar equipamentos por cliente:", error);
+      console.error('Erro ao buscar equipamentos por cliente:', error);
     }
   };
 
@@ -235,67 +181,18 @@ const CadastrarOrdem: React.FC = () => {
       .substring(0, 14);
   }
 
-  /** ------------ IMAGENS: handlers ------------ */
-  const handleSelectImagens = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    const accepted = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"];
-    const maxEach = 5 * 1024 * 1024; // 5MB
-    const maxTotal = 20;
-
-    const atuais = [...imagens];
-    for (const f of files) {
-      if (!accepted.includes(f.type)) continue;
-      if (f.size > maxEach) continue;
-      if (atuais.length >= maxTotal) break;
-
-      const preview: PreviewFile = {
-        id: genId(),
-        file: f,
-        url: URL.createObjectURL(f),
-        name: f.name,
-        size: f.size,
-      };
-      atuais.push(preview);
-    }
-    setImagens(atuais);
-    setImagensErro(''); // limpamos o erro se o usuário adicionou algo
-
-    // limpa o input pra permitir adicionar o mesmo arquivo novamente se quiser
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removerImagem = (id: string) => {
-    setImagens((prev) => {
-      const alvo = prev.find(p => p.id === id);
-      if (alvo) URL.revokeObjectURL(alvo.url);
-      const novo = prev.filter(p => p.id !== id);
-      if (novo.length === 0) setImagensErro('Adicione pelo menos 1 imagem da OS.'); // se remover todas
-      return novo;
-    });
-  };
-
-  const limparTodasImagens = () => {
-    imagens.forEach(p => URL.revokeObjectURL(p.url));
-    setImagens([]);
-    setImagensErro('Adicione pelo menos 1 imagem da OS.');
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   return (
     <MenuLateral>
       <h1 className="titulo-clientes">CADASTRAR ORDEM DE SERVIÇO</h1>
       <section className="clientes-section">
         <div className="container-central">
           <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
-
             {/* CLIENTE */}
             <label>
               <span>👤 CLIENTE</span>
               <select value={selectedClienteId ?? ''} onChange={handleClienteChange}>
                 <option value="">Selecione o cliente</option>
-                {clientes.map(cli => (
+                {clientes.map((cli) => (
                   <option key={cli.id_cliente} value={cli.id_cliente}>
                     {cli.nome} - {formatarCPF(cli.cpf)}
                   </option>
@@ -306,13 +203,9 @@ const CadastrarOrdem: React.FC = () => {
             {/* EQUIPAMENTO */}
             <label>
               <span>🔧 EQUIPAMENTO</span>
-              <select
-                value={selectedEquipamentoId ?? ''}
-                onChange={handleEquipamentoChange}
-                required
-              >
+              <select value={selectedEquipamentoId ?? ''} onChange={handleEquipamentoChange} required>
                 <option value="">Selecione o equipamento</option>
-                {equipamentos.map(eq => (
+                {equipamentos.map((eq) => (
                   <option key={eq.id_equipamento} value={eq.id_equipamento}>
                     {eq.tipo} - {eq.marca} - {eq.numero_serie}
                   </option>
@@ -329,13 +222,13 @@ const CadastrarOrdem: React.FC = () => {
                 rows={4}
                 placeholder="Informe o que o cliente relatou sobre o problema"
                 style={{
-                  backgroundColor: "#000",
-                  color: "#fff",
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #555",
-                  borderRadius: "4px",
-                  resize: "vertical"
+                  backgroundColor: '#000',
+                  color: '#fff',
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #555',
+                  borderRadius: '4px',
+                  resize: 'vertical',
                 }}
                 required
               />
@@ -362,11 +255,11 @@ const CadastrarOrdem: React.FC = () => {
               {showDropdownTecnico && (
                 <ul className="autocomplete-dropdown">
                   {tecnicos
-                    .filter(tec =>
+                    .filter((tec) =>
                       `${tec.nome} ${tec.cpf}`.replace(/\D/g, '').toLowerCase()
                         .includes(idTecnico.replace(/\D/g, '').toLowerCase())
                     )
-                    .map(tec => (
+                    .map((tec) => (
                       <li
                         key={tec.id_tecnico}
                         onClick={() => {
@@ -389,14 +282,9 @@ const CadastrarOrdem: React.FC = () => {
                 value={idLocal}
                 disabled
                 title="Este campo está travado para 'Recepção'"
-                style={{
-                  backgroundColor: "#000",
-                  color: "#fff",
-                  cursor: "not-allowed",
-                  border: "1px solid #555"
-                }}
+                style={{ backgroundColor: '#000', color: '#fff', cursor: 'not-allowed', border: '1px solid #555' }}
               >
-                {locais.map(loc => (
+                {locais.map((loc) => (
                   <option key={loc.id_scanner} value={loc.id_scanner}>
                     {loc.local_instalado}
                   </option>
@@ -411,156 +299,28 @@ const CadastrarOrdem: React.FC = () => {
                 type="text"
                 value={statusDescricao}
                 readOnly
-                style={{
-                  backgroundColor: "#000",
-                  color: "#fff",
-                  cursor: "not-allowed",
-                  border: "1px solid #555"
-                }}
+                style={{ backgroundColor: '#000', color: '#fff', cursor: 'not-allowed', border: '1px solid #555' }}
               />
             </label>
 
             {/* DATA DE ENTRADA */}
             <label>
               <span>📅 DATA DE ENTRADA</span>
-              <input
-                type="date"
-                value={dataCriacao}
-                onChange={(e) => setDataCriacao(e.target.value)}
-                required
-              />
+              <input type="date" value={dataCriacao} onChange={(e) => setDataCriacao(e.target.value)} required />
             </label>
 
-            {/* ====== IMAGENS (AGORA OBRIGATÓRIAS) ====== */}
-            <div id="secao-imagens" style={{ marginTop: 16 }}>
-              <span style={{ display: "block", marginBottom: 6, fontWeight: 700 }}>
-                📷 IMAGENS <span style={{ color: '#ff4d4f' }}>(obrigatório)</span>
-              </span>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <label
-                  htmlFor="imagens-os"
-                  style={{
-                    border: "1px dashed #777",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    background: "#0c0c0c",
-                  }}
-                  title="Clique para selecionar imagens"
-                >
-                  + Adicionar imagens
-                </label>
-
-                {imagens.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={limparTodasImagens}
-                    style={{
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "10px 14px",
-                      cursor: "pointer",
-                      background: "#444",
-                      color: "#fff",
-                    }}
-                    title="Remover todas as imagens selecionadas"
-                  >
-                    Limpar todas
-                  </button>
-                )}
-              </div>
-
-              <input
-                id="imagens-os"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleSelectImagens}
-                style={{ display: "none" }}
-              />
-
-              {/* mensagem de erro */}
-              {imagensErro && (
-                <div style={{ color: '#ff4d4f', marginTop: 8, fontWeight: 600 }}>
-                  {imagensErro}
-                </div>
-              )}
-
-              {/* GRID de previews */}
-              {imagens.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  {imagens.map((img) => (
-                    <div
-                      key={img.id}
-                      style={{
-                        position: "relative",
-                        border: "1px solid #333",
-                        borderRadius: 8,
-                        overflow: "hidden",
-                        background: "#111",
-                      }}
-                    >
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removerImagem(img.id)}
-                        title="Remover imagem"
-                        style={{
-                          position: "absolute",
-                          top: 6,
-                          right: 6,
-                          background: "#ff4d4f",   // ✅ Lixeira vermelha
-                          border: "1px solid #cc3a3c",
-                          color: "#fff",
-                          borderRadius: 6,
-                          padding: "4px 6px",
-                          cursor: "pointer",
-                          fontSize: 12,
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {/* ====== /IMAGENS ====== */}
-
             <div className="acoes-clientes" style={{ marginTop: 16 }}>
-              <button type="submit" className="btn azul" disabled={imagens.length === 0}>
-                SALVAR
+              <button type="submit" className="btn azul">SALVAR</button>
+              <button type="button" className="btn preto" onClick={() => navigate('/ordemservico')}>
+                CANCELAR
               </button>
-              <button type="button" className="btn preto" onClick={() => navigate('/ordemservico')}>CANCELAR</button>
             </div>
           </form>
         </div>
       </section>
 
-      <section className="container">{/* todo o conteúdo do form */}</section>
+      <section className="container">{/* conteúdo extra */}</section>
 
-      {/* ✅ MODAL DE SUCESSO */}
       {showSuccessModal && (
         <ModalSucesso
           onClose={() => {
