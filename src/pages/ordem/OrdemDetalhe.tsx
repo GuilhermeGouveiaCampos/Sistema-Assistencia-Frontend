@@ -12,6 +12,8 @@ import api from '../../services/api';
 interface OrdemDetalhe {
   id_ordem?: number;
   id_os?: number;
+  // ✅ adiciona (se o backend já mandar, ótimo; se não, o fallback usa o numero_serie)
+  id_equipamento?: number;
   descricao_problema: string | null;
   descricao_servico: string | null;
   data_criacao: string;
@@ -26,7 +28,7 @@ interface OrdemDetalhe {
   marca: string;
   modelo: string;
   numero_serie: string;
-  imagem: string | null;
+  imagem: string | null; // imagens da OS (pode vir vazio)
 }
 
 type AuditItem = {
@@ -53,9 +55,14 @@ const fmtDuracao = (m?: number | null) => {
   return h ? `${h}h ${min}min` : `${min}min`;
 };
 
+// helper p/ quebrar string de imagens "a.jpg,b.png"
+const splitImgs = (s?: string | null) =>
+  s ? s.split(',').map(v => v.trim()).filter(Boolean) : [];
+
 const OrdemDetalhe: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [ordem, setOrdem] = useState<OrdemDetalhe | null | undefined>(null);
+  const [fotos, setFotos] = useState<string[]>([]); // ✅ fonte única de imagens na tela
   const navigate = useNavigate();
 
   // histórico
@@ -76,17 +83,64 @@ const OrdemDetalhe: React.FC = () => {
         const { data } = await api.get<OrdemDetalhe>(`/api/ordens/${id}`);
         if (!data || (data as any).erro) {
           setOrdem(undefined);
-        } else {
-          data.tempo_servico = data.tempo_servico != null ? Number(data.tempo_servico) : null;
-          setOrdem(data);
+          return;
         }
+
+        // normaliza tempo_servico
+        data.tempo_servico = data.tempo_servico != null ? Number(data.tempo_servico) : null;
+
+        setOrdem(data);
+        // ✅ hidrata as fotos: OS → equipamento por id → equipamento por número de série
+        await hidratarFotos(data);
       } catch (error) {
         console.error('❌ Erro ao buscar detalhes da OS:', error);
         setOrdem(undefined);
       }
     };
     fetchOrdem();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const hidratarFotos = async (od: OrdemDetalhe) => {
+    // 1) tenta as imagens da própria OS
+    const daOS = splitImgs(od.imagem);
+    if (daOS.length) {
+      setFotos(daOS);
+      return;
+    }
+
+    // 2) se tiver id_equipamento, busca direto o equipamento
+    if (od.id_equipamento) {
+      try {
+        const { data: eq } = await api.get(`/api/equipamentos/${od.id_equipamento}`);
+        const imgsEq = splitImgs(eq?.imagem);
+        if (imgsEq.length) {
+          setFotos(imgsEq);
+          return;
+        }
+      } catch (e) {
+        console.warn('⚠️ Fallback por id_equipamento falhou:', e);
+      }
+    }
+
+    // 3) último fallback: carrega lista e casa pelo número de série
+    try {
+      const { data: lista } = await api.get('/api/equipamentos');
+      const eq = (lista || []).find((it: any) =>
+        String(it?.numero_serie ?? '').trim() === String(od.numero_serie ?? '').trim()
+      );
+      const imgsEq = splitImgs(eq?.imagem);
+      if (imgsEq.length) {
+        setFotos(imgsEq);
+        return;
+      }
+    } catch (e) {
+      console.warn('⚠️ Fallback por número de série falhou:', e);
+    }
+
+    // nada encontrado
+    setFotos([]);
+  };
 
   const carregarHistorico = async () => {
     if (!id) return;
@@ -109,7 +163,6 @@ const OrdemDetalhe: React.FC = () => {
   if (ordem === null) return <p>Carregando...</p>;
   if (ordem === undefined) return <p>Ordem de serviço não encontrada.</p>;
 
-  const imagens = ordem.imagem?.split(',').map(s => s.trim()).filter(Boolean) || [];
   const baseURL = import.meta.env.VITE_API_URL;
 
   const acumulado = Number(ordem.tempo_servico) || 0;
@@ -213,13 +266,13 @@ const OrdemDetalhe: React.FC = () => {
 
         <h2 style={{ marginTop: '2rem' }}>Imagens do Equipamento</h2>
         <div className="galeria-imagens">
-          {imagens.length === 0 ? (
+          {fotos.length === 0 ? (
             <p>Nenhuma imagem disponível.</p>
           ) : (
-            imagens.map((img, i) => (
+            fotos.map((img, i) => (
               <img
                 key={i}
-                src={`${baseURL}/uploads/${img}`} // ✅ sem localhost fixo
+                src={`${baseURL}/uploads/${img}`}
                 alt={`Imagem ${i + 1}`}
                 onError={() => console.error(`❌ Falha ao carregar imagem: ${img}`)}
               />

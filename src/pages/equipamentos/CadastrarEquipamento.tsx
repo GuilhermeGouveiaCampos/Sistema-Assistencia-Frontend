@@ -112,6 +112,10 @@ const CadastrarEquipamento: React.FC = () => {
   const [imagensErro, setImagensErro] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // estados para upload
+  const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState<number>(0);
+
   const removerImagem = (id: string) => {
     setImagens((prev) => {
       const alvo = prev.find((p) => p.id === id);
@@ -237,14 +241,25 @@ const CadastrarEquipamento: React.FC = () => {
     });
 
     try {
+      setEnviando(true);
+      setProgresso(0);
+
       const response = await api.post("/api/equipamentos", dados, {
-        // axios define o boundary automaticamente
-        headers: { "Accept": "application/json" },
+        headers: {
+          Accept: "application/json",
+          // deixar o axios definir o boundary automaticamente
+        },
+        timeout: 120000, // ⏱️ 120s para redes lentas
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          const pct = Math.round((evt.loaded * 100) / evt.total);
+          setProgresso(pct);
+        },
       });
 
       if (response.status === 201 || response.status === 200) {
         setMostrarModalSucesso(true);
-        if (response.data.id_equipamento) {
+        if (response.data?.id_equipamento) {
           localStorage.setItem(
             "novoEquipamento",
             JSON.stringify({
@@ -256,9 +271,22 @@ const CadastrarEquipamento: React.FC = () => {
       } else {
         alert("Algo deu errado. Verifique o console.");
       }
-    } catch (error: unknown) {
-      console.error("❌ Erro ao cadastrar equipamento:", error);
-      alert("Erro ao cadastrar equipamento. Veja o console.");
+    } catch (err: any) {
+      console.error("❌ Erro ao cadastrar equipamento:", err);
+
+      // mensagens mais amigáveis
+      const msg =
+        err?.code === "ECONNABORTED" || /timeout/i.test(err?.message || "")
+          ? "Tempo de envio excedido. Sua conexão pode estar lenta. Tente novamente, de preferência com menos imagens ou imagens menores."
+          : err?.response?.status === 413
+          ? "As imagens são muito grandes (413). Reduza o tamanho/resolução e tente novamente."
+          : "Erro ao cadastrar equipamento. Veja o console para detalhes.";
+
+      alert(msg);
+    } finally {
+      setEnviando(false);
+      // não zerar progresso de imediato para o usuário ver o resultado final
+      setTimeout(() => setProgresso(0), 800);
     }
   };
 
@@ -433,6 +461,7 @@ const CadastrarEquipamento: React.FC = () => {
                       color: "#fff",
                     }}
                     title="Remover todas as imagens selecionadas"
+                    disabled={enviando}
                   >
                     Limpar todas
                   </button>
@@ -447,12 +476,40 @@ const CadastrarEquipamento: React.FC = () => {
                 multiple
                 onChange={handleSelectImagens}
                 style={{ display: "none" }}
+                disabled={enviando}
               />
 
               {/* erro/validação */}
               {imagensErro && (
                 <div style={{ color: "#ff4d4f", marginTop: 8, fontWeight: 600 }}>
                   {imagensErro}
+                </div>
+              )}
+
+              {/* Barra de progresso */}
+              {enviando && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 12, marginBottom: 4 }}>
+                    Enviando imagens… {progresso}%
+                  </div>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: 8,
+                      background: "#2a2a2a",
+                      borderRadius: 6,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${progresso}%`,
+                        height: "100%",
+                        background: "#4caf50",
+                        transition: "width .2s ease",
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -503,6 +560,7 @@ const CadastrarEquipamento: React.FC = () => {
                           cursor: "pointer",
                           fontSize: 12,
                         }}
+                        disabled={enviando}
                       >
                         🗑️
                       </button>
@@ -514,13 +572,18 @@ const CadastrarEquipamento: React.FC = () => {
             {/* ====== /IMAGENS ====== */}
 
             <div className="acoes-clientes" style={{ marginTop: 16 }}>
-              <button type="submit" className="btn azul" disabled={imagens.length === 0}>
-                SALVAR
+              <button
+                type="submit"
+                className="btn azul"
+                disabled={imagens.length === 0 || enviando}
+              >
+                {enviando ? `SALVANDO... ${progresso}%` : "SALVAR"}
               </button>
               <button
                 type="button"
                 className="btn preto"
                 onClick={() => navigate("/equipamentos")}
+                disabled={enviando}
               >
                 CANCELAR
               </button>
@@ -531,6 +594,7 @@ const CadastrarEquipamento: React.FC = () => {
                 className="btn roxo"
                 type="button"
                 onClick={() => navigate("/equipamentos")}
+                disabled={enviando}
               >
                 VOLTAR
               </button>

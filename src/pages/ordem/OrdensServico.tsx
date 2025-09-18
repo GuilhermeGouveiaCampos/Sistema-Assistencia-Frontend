@@ -225,12 +225,15 @@ const OrdensServico: React.FC = () => {
       </div>
 
       {mostrarModal && ordemAtual && (
-        <ConfirmarExclusao
-          nomeCliente={`${ordemAtual.nome_cliente} - ${ordemAtual.tipo_equipamento}`}
-          onConfirmar={excluirOrdem}
-          onFechar={() => setMostrarModal(false)}
-        />
-      )}
+  <ConfirmarExclusao
+    entidadeLabel="Ordem de Serviço"
+    artigo="a"
+    nome={`${ordemAtual.nome_cliente} - ${ordemAtual.tipo_equipamento}`}
+    onConfirmar={excluirOrdem}
+    onFechar={() => setMostrarModal(false)}
+  />
+)}
+
     </MenuLateral>
   );
 };
