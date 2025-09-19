@@ -34,6 +34,7 @@ import CadastrarTecnico from "./pages/tecnicos/CadastrarTecnico";
 import AlterarTecnico from "./pages/tecnicos/AlterarTecnico";
 import TecnicosInativos from "./pages/tecnicos/TecnicosInativos";
 import TecnicosAtribuicoes from "./pages/tecnicos/TecnicosAtribuicoes";
+import TecnicoDetalhe from "./pages/tecnicos/TecnicoDetalhe";
 
 // USUÁRIOS
 import Usuarios from "./pages/usuarios/Usuarios";
@@ -84,6 +85,8 @@ const App: React.FC = () => {
           <Route path="/tecnicos/editar" element={<AlterarTecnico />} />
           <Route path="/tecnicos/inativos" element={<TecnicosInativos />} />
           <Route path="/tecnicos/atribuicoes" element={<TecnicosAtribuicoes />} />
+          <Route path="/tecnicos/detalhes/:id" element={<TecnicoDetalhe />} />
+
 
           <Route path="/usuarios" element={<Usuarios />} />
           <Route path="/usuarios/cadastrar" element={<CadastrarUsuario />} />
