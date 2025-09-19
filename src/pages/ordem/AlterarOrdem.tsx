@@ -79,7 +79,7 @@ const AlterarOrdem: React.FC = () => {
     setIdLocal(currentLocal);
 
     // locais
-    api.get("/api/locais")
+      api.get("/api/ordens/locais")
       .then(res => {
         const recebidos: LocalItem[] = (res.data || []).map((x: any) => ({
           id_local: String(x.id_local ?? ''),
@@ -114,19 +114,34 @@ const AlterarOrdem: React.FC = () => {
   }, [navigate]);
 
   // polling last-uid do leitor selecionado p/ autopreencher o campo de UID
-  useEffect(() => {
-    if (!autoFill || !leitorEscutado) return;
-    const timer = setInterval(async () => {
-      try {
-        const { data } = await api.get('/api/ardloc/last-uid', { params: { leitor: leitorEscutado, maxAgeSec: 5 } });
-        if (data?.recente && data?.uid) {
-          const novo = String(data.uid).toUpperCase();
-          setUidTag((prev) => (prev !== novo ? novo : prev));
+useEffect(() => {
+  if (!autoFill || !leitorEscutado) return;
+  const timer = setInterval(async () => {
+    try {
+      const { data } = await api.get('/api/ardloc/last-uid', {
+        params: { leitor: leitorEscutado, maxAgeSec: 5 }
+      });
+      if (data?.recente && data?.uid) {
+        const novo = String(data.uid).toUpperCase();
+        setUidTag((prev) => (prev !== novo ? novo : prev));
+
+        // ✅ se a TAG lida é a mesma vinculada à OS, atualiza a UI para o local do leitor
+        if (boundUid && novo === boundUid.toUpperCase()) {
+          setIdLocal(leitorEscutado);
+          const localSel = locais.find(l => l.id_scanner === leitorEscutado);
+          if (localSel) {
+            setStatusDescricao(localSel.status_interno);
+            setStatus(Number(localSel.id_status || 0));
+          }
         }
-      } catch { /* silencioso */ }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [autoFill, leitorEscutado]);
+      }
+    } catch {
+      /* silencioso */
+    }
+  }, 1000);
+  return () => clearInterval(timer);
+}, [autoFill, leitorEscutado, boundUid, locais]);
+
 
   async function fetchBoundUidFromApi(id_os: number) {
     setLoadingBoundUid(true);
