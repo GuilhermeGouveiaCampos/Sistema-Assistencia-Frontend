@@ -21,6 +21,12 @@ type LeitorItem = {
   nome?: string;
 };
 
+type Toast = {
+  id: number;
+  type: 'success' | 'error' | 'info';
+  text: string;
+};
+
 const AlterarOrdem: React.FC = () => {
   const navigate = useNavigate();
   const nomeUsuario = localStorage.getItem("nome") || "Usuário";
@@ -51,6 +57,14 @@ const AlterarOrdem: React.FC = () => {
   const [leitorEscutado, setLeitorEscutado] = useState<string>(() => localStorage.getItem('leitor_codigo_front') || '');
   const [autoFill, setAutoFill] = useState<boolean>(() => (localStorage.getItem('rfid_autofill') ?? '1') === '1');
 
+  // 🔔 Toasts (canto superior direito)
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const pushToast = (t: Omit<Toast, 'id'>, ms = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { ...t, id }]);
+    setTimeout(() => setToasts(prev => prev.filter(x => x.id !== id)), ms);
+  };
+
   // cache da TAG vinculada por OS
   const cacheKey = (osId: number) => `rfid_bound_uid_${osId}`;
   const setCacheBound = (osId: number, uid: string) => localStorage.setItem(cacheKey(osId), uid || '');
@@ -60,7 +74,7 @@ const AlterarOrdem: React.FC = () => {
   useEffect(() => {
     const ordemString = localStorage.getItem("ordemSelecionada");
     if (!ordemString) {
-      alert("Nenhuma ordem selecionada.");
+      pushToast({ type: 'error', text: 'Nenhuma ordem selecionada.' });
       navigate('/ordemservico');
       return;
     }
@@ -97,7 +111,10 @@ const AlterarOrdem: React.FC = () => {
           setStatus(Number(localAtual.id_status || 0));
         }
       })
-      .catch(err => console.error("Erro ao buscar locais:", err));
+      .catch(err => {
+        console.error("Erro ao buscar locais:", err);
+        pushToast({ type: 'error', text: 'Erro ao carregar locais.' });
+      });
 
     // leitores disponíveis para escuta (autofill)
     api.get('/api/ardloc/leitores')
@@ -157,10 +174,16 @@ const AlterarOrdem: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!idOrdem) return alert('Ordem inválida.');
-    if (!idLocal || idLocal.trim() === '') return alert("Selecione um local válido.");
+    if (!idOrdem) {
+      pushToast({ type: 'error', text: 'Ordem inválida.' });
+      return;
+    }
+    if (!idLocal || idLocal.trim() === '') {
+      pushToast({ type: 'error', text: 'Selecione um local válido.' });
+      return;
+    }
     if (typeof status !== 'number' || isNaN(status) || status <= 0) {
-      alert("Status inválido. Selecione um local válido para gerar o status.");
+      pushToast({ type: 'error', text: 'Status inválido. Selecione um local válido.' });
       return;
     }
 
@@ -175,15 +198,21 @@ const AlterarOrdem: React.FC = () => {
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Erro ao atualizar ordem:', error?.response?.data || error);
-      alert(error?.response?.data?.erro || 'Erro ao atualizar ordem.');
+      pushToast({ type: 'error', text: error?.response?.data?.erro || 'Erro ao atualizar ordem.' });
     }
   };
 
   // 🔗 Vincular TAG à OS
   const bindTag = async () => {
-    if (!idOrdem) return alert('Ordem inválida.');
+    if (!idOrdem) {
+      pushToast({ type: 'error', text: 'Ordem inválida.' });
+      return;
+    }
     const uid = (uidTag || '').trim().toUpperCase();
-    if (!/^[0-9A-F]{8,}$/i.test(uid)) return alert('Informe o UID da TAG (hex).');
+    if (!/^[0-9A-F]{8,}$/i.test(uid)) {
+      pushToast({ type: 'error', text: 'Informe o UID da TAG (hex).' });
+      return;
+    }
 
     try {
       setLoadingBind(true);
@@ -191,9 +220,9 @@ const AlterarOrdem: React.FC = () => {
       setBoundUid(uid);
       setCacheBound(idOrdem, uid);
       await fetchBoundList(idOrdem);
-      alert(`TAG ${uid} vinculada à OS ${idOrdem}.`);
+      pushToast({ type: 'success', text: `TAG ${uid} vinculada à OS ${idOrdem}.` });
     } catch (e: any) {
-      alert(e?.response?.data?.erro || 'Falha ao vincular TAG.');
+      pushToast({ type: 'error', text: e?.response?.data?.erro || 'Falha ao vincular TAG.' });
     } finally {
       setLoadingBind(false);
     }
@@ -202,7 +231,10 @@ const AlterarOrdem: React.FC = () => {
   // ❌ Desvincular TAG da OS
   const unbindTag = async () => {
     const uid = (uidTag || '').trim().toUpperCase();
-    if (!/^[0-9A-F]{8,}$/i.test(uid)) return alert('Informe o UID da TAG para desvincular.');
+    if (!/^[0-9A-F]{8,}$/i.test(uid)) {
+      pushToast({ type: 'error', text: 'Informe o UID da TAG para desvincular.' });
+      return;
+    }
 
     try {
       setLoadingUnbind(true);
@@ -212,9 +244,9 @@ const AlterarOrdem: React.FC = () => {
         localStorage.removeItem(cacheKey(idOrdem));
         await fetchBoundList(idOrdem);
       }
-      alert(`TAG ${uid} desvinculada.`);
+      pushToast({ type: 'error', text: `TAG ${uid} desvinculada.` }); // vermelho
     } catch (e: any) {
-      alert(e?.response?.data?.erro || 'Falha ao desvincular TAG.');
+      pushToast({ type: 'error', text: e?.response?.data?.erro || 'Falha ao desvincular TAG.' });
     } finally {
       setLoadingUnbind(false);
     }
@@ -222,6 +254,38 @@ const AlterarOrdem: React.FC = () => {
 
   return (
     <MenuLateral>
+      {/* 🔔 Toasts (top-right) */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 16,
+          right: 16,
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}
+      >
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            style={{
+              minWidth: 260,
+              maxWidth: 420,
+              padding: '10px 14px',
+              borderRadius: 10,
+              color: '#fff',
+              background:
+                t.type === 'success' ? '#16a34a' : t.type === 'error' ? '#dc2626' : '#2563eb',
+              boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+              fontWeight: 600,
+            }}
+          >
+            {t.text}
+          </div>
+        ))}
+      </div>
+
       <h1 className="titulo-clientes">ALTERAR ORDEM DE SERVIÇO</h1>
 
       <section className="clientes-section">
@@ -377,13 +441,16 @@ const AlterarOrdem: React.FC = () => {
                   type="button"
                   className="btn preto"
                   onClick={async () => {
-                    if (!leitorEscutado) return alert('Selecione o leitor.');
+                    if (!leitorEscutado) {
+                      pushToast({ type: 'error', text: 'Selecione o leitor.' });
+                      return;
+                    }
                     try {
                       const { data } = await api.get('/api/ardloc/last-uid', { params: { leitor: leitorEscutado, maxAgeSec: 10 } });
                       if (data?.uid) setUidTag(String(data.uid).toUpperCase());
-                      else alert('Nenhum UID recente para este leitor.');
+                      else pushToast({ type: 'info', text: 'Nenhum UID recente para este leitor.' });
                     } catch {
-                      alert('Falha ao ler UID.');
+                      pushToast({ type: 'error', text: 'Falha ao ler UID.' });
                     }
                   }}
                 >
