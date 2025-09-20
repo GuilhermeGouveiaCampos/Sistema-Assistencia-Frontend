@@ -41,6 +41,7 @@ const AlterarOrdem: React.FC = () => {
   // 🔗 RFID
   const [uidTag, setUidTag] = useState<string>('');            // campo de UID (manual ou auto)
   const [boundUid, setBoundUid] = useState<string>('');        // UID atualmente vinculado na OS
+  const [boundList, setBoundList] = useState<{ uid: string; desde?: string }[]>([]);
   const [loadingBind, setLoadingBind] = useState(false);
   const [loadingUnbind, setLoadingUnbind] = useState(false);
   const [loadingBoundUid, setLoadingBoundUid] = useState(false);
@@ -79,7 +80,7 @@ const AlterarOrdem: React.FC = () => {
     setIdLocal(currentLocal);
 
     // locais
-      api.get("/api/ordens/locais")
+    api.get("/api/ordens/locais")
       .then(res => {
         const recebidos: LocalItem[] = (res.data || []).map((x: any) => ({
           id_local: String(x.id_local ?? ''),
@@ -103,50 +104,40 @@ const AlterarOrdem: React.FC = () => {
       .then(res => setLeitores(res.data || []))
       .catch(() => setLeitores([]));
 
-    // preenche TAG vinculada (servidor) ou cache
+    // preenche TAG(s) vinculada(s) (servidor) ou cache
     if (Number.isFinite(osId)) {
       fetchBoundUidFromApi(osId).catch(() => {
         const cached = getCacheBound(osId);
         setBoundUid(cached);
         if (cached) setUidTag(cached);
       });
+      fetchBoundList(osId).catch(() => setBoundList([]));
     }
   }, [navigate]);
 
   // polling last-uid do leitor selecionado p/ autopreencher o campo de UID
-useEffect(() => {
-  if (!autoFill || !leitorEscutado) return;
-  const timer = setInterval(async () => {
-    try {
-      const { data } = await api.get('/api/ardloc/last-uid', {
-        params: { leitor: leitorEscutado, maxAgeSec: 5 }
-      });
-      if (data?.recente && data?.uid) {
-        const novo = String(data.uid).toUpperCase();
-        setUidTag((prev) => (prev !== novo ? novo : prev));
-
-        // ✅ se a TAG lida é a mesma vinculada à OS, atualiza a UI para o local do leitor
-        if (boundUid && novo === boundUid.toUpperCase()) {
-          setIdLocal(leitorEscutado);
-          const localSel = locais.find(l => l.id_scanner === leitorEscutado);
-          if (localSel) {
-            setStatusDescricao(localSel.status_interno);
-            setStatus(Number(localSel.id_status || 0));
-          }
+  useEffect(() => {
+    if (!autoFill || !leitorEscutado) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await api.get('/api/ardloc/last-uid', {
+          params: { leitor: leitorEscutado, maxAgeSec: 5 }
+        });
+        if (data?.recente && data?.uid) {
+          const novo = String(data.uid).toUpperCase();
+          setUidTag((prev) => (prev !== novo ? novo : prev));
         }
+      } catch {
+        /* silencioso */
       }
-    } catch {
-      /* silencioso */
-    }
-  }, 1000);
-  return () => clearInterval(timer);
-}, [autoFill, leitorEscutado, boundUid, locais]);
-
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [autoFill, leitorEscutado]);
 
   async function fetchBoundUidFromApi(id_os: number) {
     setLoadingBoundUid(true);
     try {
-      const { data } = await api.get('/api/rfid/bind/current', { params: { id_os } });
+      const { data } = await api.get('/api/ardloc/bind/current', { params: { id_os } });
       const uid = String(data?.uid || '').toUpperCase();
       setBoundUid(uid);
       if (uid) {
@@ -156,6 +147,11 @@ useEffect(() => {
     } finally {
       setLoadingBoundUid(false);
     }
+  }
+
+  async function fetchBoundList(id_os: number) {
+    const { data } = await api.get('/api/ardloc/bind/list', { params: { id_os } });
+    setBoundList(Array.isArray(data) ? data : []);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -191,9 +187,10 @@ useEffect(() => {
 
     try {
       setLoadingBind(true);
-      await api.post('/api/rfid/bind', { uid, id_os: Number(idOrdem) });
+      await api.post('/api/ardloc/bind', { uid, id_os: Number(idOrdem) });
       setBoundUid(uid);
       setCacheBound(idOrdem, uid);
+      await fetchBoundList(idOrdem);
       alert(`TAG ${uid} vinculada à OS ${idOrdem}.`);
     } catch (e: any) {
       alert(e?.response?.data?.erro || 'Falha ao vincular TAG.');
@@ -209,9 +206,12 @@ useEffect(() => {
 
     try {
       setLoadingUnbind(true);
-      await api.post('/api/rfid/unbind', { uid });
+      await api.post('/api/ardloc/unbind', { uid });
       setBoundUid('');
-      if (idOrdem) localStorage.removeItem(cacheKey(idOrdem));
+      if (idOrdem) {
+        localStorage.removeItem(cacheKey(idOrdem));
+        await fetchBoundList(idOrdem);
+      }
       alert(`TAG ${uid} desvinculada.`);
     } catch (e: any) {
       alert(e?.response?.data?.erro || 'Falha ao desvincular TAG.');
@@ -301,6 +301,20 @@ useEffect(() => {
                   {loadingBoundUid ? 'ATUALIZANDO...' : 'ATUALIZAR'}
                 </button>
               </div>
+
+              {boundList.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <small style={{ opacity: .7 }}>TAGs vinculadas a esta OS:</small>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    {boundList.map(({ uid, desde }) => (
+                      <li key={uid}>
+                        <code>{uid}</code>{' '}
+                        {desde && <small style={{ opacity: .6 }}>— desde {new Date(desde).toLocaleString('pt-BR')}</small>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </label>
 
             {/* 🔗 RFID */}
@@ -343,7 +357,7 @@ useEffect(() => {
                 Passe a TAG no leitor configurado ou insira manualmente o UID abaixo.
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 8, alignItems: 'center' }}>
                 <input
                   type="text"
                   value={uidTag}
@@ -359,6 +373,22 @@ useEffect(() => {
                     minWidth: 220,
                   }}
                 />
+                <button
+                  type="button"
+                  className="btn preto"
+                  onClick={async () => {
+                    if (!leitorEscutado) return alert('Selecione o leitor.');
+                    try {
+                      const { data } = await api.get('/api/ardloc/last-uid', { params: { leitor: leitorEscutado, maxAgeSec: 10 } });
+                      if (data?.uid) setUidTag(String(data.uid).toUpperCase());
+                      else alert('Nenhum UID recente para este leitor.');
+                    } catch {
+                      alert('Falha ao ler UID.');
+                    }
+                  }}
+                >
+                  LER AGORA
+                </button>
                 <button type="button" className="btn azul" onClick={bindTag} disabled={loadingBind || !idOrdem || !uidTag}>
                   {loadingBind ? 'VINCULANDO...' : 'VINCULAR'}
                 </button>
