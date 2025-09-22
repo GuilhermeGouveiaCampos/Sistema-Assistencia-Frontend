@@ -49,7 +49,7 @@ const DetalhesEquipamento: React.FC = () => {
   if (equipamento === null) return <p>Carregando...</p>;
   if (equipamento === undefined) return <p>Equipamento não encontrado.</p>;
 
-  const imagens = equipamento.imagem?.split(',') || [];
+  const imagens = equipamento.imagem?.split(',').map(s => s.trim()).filter(Boolean) || [];
   const baseURL = import.meta.env.VITE_API_URL; // ✅ para montar src das imagens
 
   return (
@@ -74,7 +74,7 @@ const DetalhesEquipamento: React.FC = () => {
             imagens.map((img, index) => (
               <img
                 key={index}
-                src={`${baseURL}/uploads/${img}`} // ✅ sem localhost fixo
+                src={`${baseURL}/uploads/${img}`} // CSV continua vindo da pasta /uploads
                 alt={`Imagem ${index + 1}`}
                 onError={() => console.error(`❌ Falha ao carregar imagem: ${img}`)}
               />

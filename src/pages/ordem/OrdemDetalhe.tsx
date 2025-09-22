@@ -9,10 +9,17 @@ import '../Css/Pesquisa.css';
 // ✅ cliente axios central (usa import.meta.env.VITE_API_URL)
 import api from '../../services/api';
 
+interface OrdemImagem {
+  id_imagem: number;
+  url: string;       // ex.: /api/ordens/imagens/blob/123
+  mime?: string;
+  size?: number;
+  created_at?: string;
+}
+
 interface OrdemDetalhe {
   id_ordem?: number;
   id_os?: number;
-  // ✅ adiciona (se o backend já mandar, ótimo; se não, o fallback usa o numero_serie)
   id_equipamento?: number;
   descricao_problema: string | null;
   descricao_servico: string | null;
@@ -28,7 +35,8 @@ interface OrdemDetalhe {
   marca: string;
   modelo: string;
   numero_serie: string;
-  imagem: string | null; // imagens da OS (pode vir vazio)
+  // ❗ não usamos mais string CSV aqui; backend já envia:
+  imagens?: OrdemImagem[];
 }
 
 type AuditItem = {
@@ -62,7 +70,10 @@ const splitImgs = (s?: string | null) =>
 const OrdemDetalhe: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [ordem, setOrdem] = useState<OrdemDetalhe | null | undefined>(null);
-  const [fotos, setFotos] = useState<string[]>([]); // ✅ fonte única de imagens na tela
+
+  // 🔥 lista final de imagens a exibir (pode misturar blob e /uploads)
+  const [fotosUrls, setFotosUrls] = useState<string[]>([]);
+
   const navigate = useNavigate();
 
   // histórico
@@ -86,11 +97,10 @@ const OrdemDetalhe: React.FC = () => {
           return;
         }
 
-        // normaliza tempo_servico
         data.tempo_servico = data.tempo_servico != null ? Number(data.tempo_servico) : null;
-
         setOrdem(data);
-        // ✅ hidrata as fotos: OS → equipamento por id → equipamento por número de série
+
+        // monta imagens:
         await hidratarFotos(data);
       } catch (error) {
         console.error('❌ Erro ao buscar detalhes da OS:', error);
@@ -98,24 +108,26 @@ const OrdemDetalhe: React.FC = () => {
       }
     };
     fetchOrdem();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const hidratarFotos = async (od: OrdemDetalhe) => {
-    // 1) tenta as imagens da própria OS
-    const daOS = splitImgs(od.imagem);
-    if (daOS.length) {
-      setFotos(daOS);
+    const baseURL = import.meta.env.VITE_API_URL;
+
+    // 1) usa as imagens BLOB da própria OS (se vieram)
+    if (od.imagens && od.imagens.length) {
+      setFotosUrls(
+        od.imagens.map(im => `${baseURL}${im.url}`) // junta baseURL + /api/ordens/imagens/blob/:id
+      );
       return;
     }
 
-    // 2) se tiver id_equipamento, busca direto o equipamento
+    // 2) fallback: por id_equipamento (CSV salvo em /uploads)
     if (od.id_equipamento) {
       try {
         const { data: eq } = await api.get(`/api/equipamentos/${od.id_equipamento}`);
-        const imgsEq = splitImgs(eq?.imagem);
-        if (imgsEq.length) {
-          setFotos(imgsEq);
+        const csv = splitImgs(eq?.imagem);
+        if (csv.length) {
+          setFotosUrls(csv.map((f: string) => `${baseURL}/uploads/${f}`));
           return;
         }
       } catch (e) {
@@ -123,15 +135,15 @@ const OrdemDetalhe: React.FC = () => {
       }
     }
 
-    // 3) último fallback: carrega lista e casa pelo número de série
+    // 3) fallback: casando por número de série
     try {
       const { data: lista } = await api.get('/api/equipamentos');
       const eq = (lista || []).find((it: any) =>
         String(it?.numero_serie ?? '').trim() === String(od.numero_serie ?? '').trim()
       );
-      const imgsEq = splitImgs(eq?.imagem);
-      if (imgsEq.length) {
-        setFotos(imgsEq);
+      const csv = splitImgs(eq?.imagem);
+      if (csv.length) {
+        setFotosUrls(csv.map((f: string) => `${baseURL}/uploads/${f}`));
         return;
       }
     } catch (e) {
@@ -139,7 +151,7 @@ const OrdemDetalhe: React.FC = () => {
     }
 
     // nada encontrado
-    setFotos([]);
+    setFotosUrls([]);
   };
 
   const carregarHistorico = async () => {
@@ -162,8 +174,6 @@ const OrdemDetalhe: React.FC = () => {
 
   if (ordem === null) return <p>Carregando...</p>;
   if (ordem === undefined) return <p>Ordem de serviço não encontrada.</p>;
-
-  const baseURL = import.meta.env.VITE_API_URL;
 
   const acumulado = Number(ordem.tempo_servico) || 0;
   const timerRodando = !!ordem.data_inicio_reparo && !ordem.data_fim_reparo;
@@ -264,17 +274,17 @@ const OrdemDetalhe: React.FC = () => {
           </div>
         )}
 
-        <h2 style={{ marginTop: '2rem' }}>Imagens do Equipamento</h2>
+        <h2 style={{ marginTop: '2rem' }}>Imagens do Equipamento / OS</h2>
         <div className="galeria-imagens">
-          {fotos.length === 0 ? (
+          {fotosUrls.length === 0 ? (
             <p>Nenhuma imagem disponível.</p>
           ) : (
-            fotos.map((img, i) => (
+            fotosUrls.map((src, i) => (
               <img
                 key={i}
-                src={`${baseURL}/uploads/${img}`}
+                src={src}
                 alt={`Imagem ${i + 1}`}
-                onError={() => console.error(`❌ Falha ao carregar imagem: ${img}`)}
+                onError={() => console.error(`❌ Falha ao carregar imagem: ${src}`)}
               />
             ))
           )}
