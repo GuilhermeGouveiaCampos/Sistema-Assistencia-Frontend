@@ -1,5 +1,5 @@
 // src/pages/ordens/OrdemDetalhe.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MenuLateral from '../../components/MenuLateral';
 
@@ -35,14 +35,14 @@ interface OrdemDetalhe {
   marca: string;
   modelo: string;
   numero_serie: string;
-  // ❗ não usamos mais string CSV aqui; backend já envia:
+  // backend já envia array (se houver)
   imagens?: OrdemImagem[];
 }
 
 type AuditItem = {
   id_log: number;
   action: string;
-  field: string | null;
+  field: string | null; // 'id_local' | 'id_status_os' | ...
   old_value: string | null;
   new_value: string | null;
   note: string | null;
@@ -116,7 +116,7 @@ const OrdemDetalhe: React.FC = () => {
     // 1) usa as imagens BLOB da própria OS (se vieram)
     if (od.imagens && od.imagens.length) {
       setFotosUrls(
-        od.imagens.map(im => `${baseURL}${im.url}`) // junta baseURL + /api/ordens/imagens/blob/:id
+        od.imagens.map(im => `${baseURL}${im.url}`)
       );
       return;
     }
@@ -172,6 +172,56 @@ const OrdemDetalhe: React.FC = () => {
     }
   };
 
+  // 🔧 DEDUPLICAÇÃO DE EVENTOS SIMULTÂNEOS
+  // - Considera apenas 'id_local' e 'id_status_os'
+  // - Se dois eventos forem do mesmo usuário e ocorrerem dentro de 3s,
+  //   mantém só UM. Prioridade: manter 'id_local' e descartar 'id_status_os'.
+  const historicoCondensado = useMemo(() => {
+    if (!audit) return [];
+    const apenasLS = audit.filter(a =>
+      a.field === 'id_local' || a.field === 'id_status_os'
+    );
+
+    // ordena por created_at ASC para agrupar corretamente
+    apenasLS.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const out: AuditItem[] = [];
+    for (const a of apenasLS) {
+      const tA = new Date(a.created_at).getTime();
+      const userA = a.user_id ?? a.usuario ?? '';
+
+      // procura um item recente (<=3s) do mesmo usuário já no "out"
+      let foundIndex = -1;
+      for (let i = out.length - 1; i >= 0; i--) {
+        const b = out[i];
+        const sameUser = (b.user_id ?? b.usuario ?? '') === userA;
+        const dt = Math.abs(tA - new Date(b.created_at).getTime());
+        if (sameUser && dt <= 3000) { // 3 segundos
+          foundIndex = i;
+          break;
+        }
+      }
+
+      if (foundIndex === -1) {
+        out.push(a);
+      } else {
+        const b = out[foundIndex];
+        // Se já temos um grupo, preferimos manter 'id_local'.
+        // Se b é 'status' e a é 'local', substitui.
+        const bIsLocal = b.field === 'id_local';
+        const aIsLocal = a.field === 'id_local';
+        if (!bIsLocal && aIsLocal) {
+          out[foundIndex] = a;
+        }
+        // Caso contrário, ignoramos 'status' duplicado.
+      }
+    }
+
+    // Exibe em ordem decrescente (mais recente primeiro), como antes
+    out.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return out;
+  }, [audit]);
+
   if (ordem === null) return <p>Carregando...</p>;
   if (ordem === undefined) return <p>Ordem de serviço não encontrada.</p>;
 
@@ -226,7 +276,7 @@ const OrdemDetalhe: React.FC = () => {
             <h3 style={{ marginBottom: '.5rem' }}>Histórico de Movimentações</h3>
             {auditLoading ? (
               <p>Carregando histórico...</p>
-            ) : audit && audit.length ? (
+            ) : historicoCondensado && historicoCondensado.length ? (
               <div className="tabela-usuarios">
                 <table>
                   <thead>
@@ -238,33 +288,31 @@ const OrdemDetalhe: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(audit || [])
-                      .filter(a => a.field === 'id_local' || a.field === 'id_status_os')
-                      .map(a => {
-                        const campo =
-                          a.field === 'id_local' ? 'Local'
-                          : a.field === 'id_status_os' ? 'Status'
-                          : (a.field || '—');
+                    {historicoCondensado.map(a => {
+                      const campo =
+                        a.field === 'id_local' ? 'Local'
+                        : a.field === 'id_status_os' ? 'Status'
+                        : (a.field || '—');
 
-                        const de = (a.old_label ?? a.old_value ?? '—');
-                        const para = (a.new_label ?? a.new_value ?? '—');
+                      const de = (a.old_label ?? a.old_value ?? '—');
+                      const para = (a.new_label ?? a.new_value ?? '—');
 
-                        const quando = a.created_at
-                          ? new Date(a.created_at).toLocaleString('pt-BR', {
-                              day: '2-digit', month: '2-digit', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit'
-                            })
-                          : '—';
+                      const quando = a.created_at
+                        ? new Date(a.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })
+                        : '—';
 
-                        return (
-                          <tr key={a.id_log}>
-                            <td>{quando}</td>
-                            <td>{a.usuario || '—'}</td>
-                            <td>{campo}</td>
-                            <td>{de} &nbsp;→&nbsp; {para}</td>
-                          </tr>
-                        );
-                      })}
+                      return (
+                        <tr key={a.id_log}>
+                          <td>{quando}</td>
+                          <td>{a.usuario || '—'}</td>
+                          <td>{campo}</td>
+                          <td>{de} &nbsp;→&nbsp; {para}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
