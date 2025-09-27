@@ -1,12 +1,11 @@
 // src/pages/dashboard/Dashboard.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import MenuLateral from "../../components/MenuLateral";
 import api from "../../services/api";
 
 // Tipos do resumo
 type PorStatus = { status: string; total: number };
-type PorTecnico = { nome: string; abertas: number };
+type PorTecnico = { nome: string; abertas: number; finalizadas_periodo: number };
 type UltimaOS = {
   id_ordem: number;
   cliente: string;
@@ -21,7 +20,7 @@ type Summary = {
   entregues: number;
   em_diagnostico: number;
   por_status: PorStatus[];
-  por_tecnico: PorTecnico[];
+  por_tecnico: PorTecnico[]; // agora inclui finalizadas_periodo
   ultimas_ordens: UltimaOS[];
   msgs_hoje: number;
 };
@@ -34,22 +33,29 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  RadialBarChart,
-  RadialBar,
   Legend,
+  CartesianGrid,
+  Cell,
 } from "recharts";
 
-const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
+const periodOptions = [
+  { value: "today", label: "Hoje" },
+  { value: "yesterday", label: "Ontem" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "15d", label: "Últimos 15 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+  { value: "month", label: "Mês atual" },
+];
 
+// paleta básica pra “dar vida” ao gráfico de status
+const palette = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#e11d48"];
+
+const Dashboard: React.FC = () => {
   // ✅ Restringir a dashboard ao gerente (id=1 no localStorage)
   const userId = localStorage.getItem("id");
   const isGerente = userId === "1";
 
-  const [period, setPeriod] = useState<"day" | "month">("day");
+  const [period, setPeriod] = useState<string>("today");
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -59,9 +65,9 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      // IMPORTANTE: ajuste a rota conforme seu api.ts:
-      // Se o baseURL NÃO inclui /api, use "/api/dashboard/summary"
-      // Se o baseURL JÁ inclui /api, use "/dashboard/summary"
+      // IMPORTANTE: ajuste conforme seu api.ts:
+      // - Se baseURL já inclui /api, use "/dashboard/summary?..."
+      // - Se NÃO inclui, mantenha "/api/dashboard/summary?..."
       const res = await api.get<Summary>(`/api/dashboard/summary?period=${period}`);
       setData(res.data);
     } catch (e) {
@@ -79,34 +85,42 @@ const Dashboard: React.FC = () => {
   // Dados para gráficos
   const chartStatus = useMemo(() => {
     if (!data) return [];
-    // Normaliza rótulos longos
-    return data.por_status.map((s) => ({
+    // Normaliza rótulos longos e aplica cores
+    return data.por_status.map((s, i) => ({
       status: s.status.length > 14 ? s.status.slice(0, 12) + "…" : s.status,
       total: s.total,
+      fill: palette[i % palette.length],
     }));
   }, [data]);
 
+  // Técnicos: barras horizontais com Abertas (snapshot) e Finalizadas (no período selecionado)
   const chartTecnicos = useMemo(() => {
     if (!data) return [];
     return data.por_tecnico.map((t) => ({
-      name: t.nome,
-      value: t.abertas,
+      tecnico: t.nome,
+      Abertas: t.abertas,
+      Finalizadas: t.finalizadas_periodo,
     }));
   }, [data]);
 
-  // Rosca radial precisa de soma total p/ legenda
-  const totalAbertasTecnicos = useMemo(
-    () => chartTecnicos.reduce((acc, it) => acc + it.value, 0),
-    [chartTecnicos]
-  );
-
+  // Para não-gerente: saudação simples
   if (!isGerente) {
+    const hora = new Date().getHours();
+    const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+    const mensagens = [
+      "Tenha um ótimo dia!",
+      "Bons atendimentos por aí!",
+      "Foco no cliente 😀",
+      "Conte com a equipe!",
+    ];
+    const msg = mensagens[hora % mensagens.length];
+
     return (
       <MenuLateral>
-        <div className="p-6">
-          <h1 className="text-2xl font-semibold mb-4">Dashboard</h1>
-          <div className="rounded border p-4 bg-red-500/10 border-red-500/30 text-red-600">
-            Acesso restrito. Esta área é exclusiva do gerente.
+        <div className="p-8">
+          <div className="rounded-2xl p-6 border shadow-sm bg-gradient-to-r from-indigo-50 to-cyan-50">
+            <h1 className="text-2xl font-semibold mb-2">{saudacao}!</h1>
+            <p className="text-lg opacity-80">{msg}</p>
           </div>
         </div>
       </MenuLateral>
@@ -120,14 +134,17 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <div className="flex items-center gap-2">
-            <label className="text-sm opacity-80">Entregues por:</label>
+            <label className="text-sm opacity-80">Período:</label>
             <select
-              className="border rounded px-2 py-1 bg-transparent"
+              className="border rounded px-2 py-1 bg-white"
               value={period}
-              onChange={(e) => setPeriod(e.target.value as "day" | "month")}
+              onChange={(e) => setPeriod(e.target.value)}
             >
-              <option value="day">Hoje</option>
-              <option value="month">Mês</option>
+              {periodOptions.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -142,63 +159,60 @@ const Dashboard: React.FC = () => {
 
         {!loading && !error && data && (
           <>
-            {/* Cards principais (linha de “widgets”) */}
+            {/* Cards principais — agora coloridinhos */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <Card title="Clientes" value={data.total_clientes} />
-              <Card title="OS em Aberto" value={data.em_aberto} />
+              <Card title="Clientes" value={data.total_clientes} color="from-blue-500 to-blue-600" />
+              <Card title="OS em Aberto" value={data.em_aberto} color="from-emerald-500 to-emerald-600" />
               <Card
-                title={period === "day" ? "Entregues Hoje" : "Entregues no Mês"}
+                title={
+                  period === "today"
+                    ? "Entregues Hoje"
+                    : period === "yesterday"
+                    ? "Entregues Ontem"
+                    : "Entregues (Período)"
+                }
                 value={data.entregues}
+                color="from-amber-500 to-amber-600"
               />
-              <Card title="Em Diagnóstico" value={data.em_diagnostico} />
-              <Card title="WhatsApp (Hoje)" value={data.msgs_hoje} />
+              <Card title="Em Diagnóstico" value={data.em_diagnostico} color="from-fuchsia-500 to-fuchsia-600" />
+              <Card title="WhatsApp (Hoje)" value={data.msgs_hoje} color="from-cyan-500 to-cyan-600" />
             </div>
 
-            {/* Linha de gráficos (estilo como sua referência) */}
+            {/* Linha de gráficos e feed */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               {/* Barras: OS por Status */}
               <Box title="OS por Status">
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartStatus}>
+                      <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="status" />
                       <YAxis allowDecimals={false} />
                       <Tooltip />
-                      <Bar dataKey="total" />
+                      <Bar dataKey="total">
+                        {chartStatus.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Box>
 
-              {/* Rosca Radial: Abertas por Técnico */}
-              <Box title="Abertas por Técnico">
+              {/* Técnicos — Barras horizontais: Abertas vs Finalizadas (no período) */}
+              <Box title="Técnicos — Abertas (agora) vs Finalizadas (período)">
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RadialBarChart
-                      innerRadius="20%"
-                      outerRadius="90%"
-                      data={chartTecnicos}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <RadialBar
-                        background
-                        dataKey="value"
-                        cornerRadius={8}
-                        label={{ position: "insideStart", fill: "#444", formatter: (v: any) => (v > 0 ? v : "") }}
-                      />
-                      <Legend
-                        layout="vertical"
-                        verticalAlign="middle"
-                        align="right"
-                        iconType="circle"
-                        formatter={(value: string) => `${value}`}
-                      />
-                    </RadialBarChart>
+                    <BarChart data={chartTecnicos} layout="vertical" margin={{ left: 24 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" allowDecimals={false} />
+                      <YAxis type="category" dataKey="tecnico" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="Abertas" fill="#2563eb" />
+                      <Bar dataKey="Finalizadas" fill="#16a34a" />
+                    </BarChart>
                   </ResponsiveContainer>
-                </div>
-                <div className="text-sm opacity-70 text-right mt-2">
-                  Total: <span className="font-semibold">{totalAbertasTecnicos}</span>
                 </div>
               </Box>
 
@@ -233,15 +247,21 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const Card: React.FC<{ title: string; value: number | string }> = ({ title, value }) => (
-  <div className="rounded-2xl p-4 border shadow-sm">
-    <div className="text-sm opacity-70">{title}</div>
+const Card: React.FC<{ title: string; value: number | string; color: string }> = ({
+  title,
+  value,
+  color,
+}) => (
+  <div className="rounded-2xl p-4 border shadow-sm bg-white">
+    <div className={`text-xs uppercase tracking-wide mb-1 bg-gradient-to-r ${color} text-white inline-block px-2 py-0.5 rounded`}>
+      {title}
+    </div>
     <div className="text-3xl font-bold mt-1">{value}</div>
   </div>
 );
 
 const Box: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-2xl p-4 border shadow-sm bg-white/40 dark:bg-white/5">
+  <div className="rounded-2xl p-4 border shadow-sm bg-white">
     <h2 className="font-medium mb-2">{title}</h2>
     {children}
   </div>
