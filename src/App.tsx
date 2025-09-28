@@ -48,7 +48,8 @@ import CadastrarOrdem from "./pages/ordem/CadastrarOrdem";
 import AlterarOrdem from "./pages/ordem/AlterarOrdem";
 import OrdensInativas from "./pages/ordem/OrdensInativas";
 import OrdemDetalhe from "./pages/ordem/OrdemDetalhe";
-import RelatorioOS from "./pages/Relatorios/RelatorioOS";
+import RelatorioOS from "./pages/relatorios/RelatorioOS";
+
 
 const App: React.FC = () => {
   return (
