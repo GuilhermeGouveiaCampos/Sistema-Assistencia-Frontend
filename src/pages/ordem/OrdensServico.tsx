@@ -32,6 +32,9 @@ const OrdensServico: React.FC = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
+  // ✅ apenas gerente vê o botão de relatórios
+  const isGerente = typeof window !== "undefined" && localStorage.getItem("id") === "1";
+
   const consultarOrdens = async (signal?: AbortSignal) => {
     try {
       setCarregando(true);
@@ -103,6 +106,19 @@ const OrdensServico: React.FC = () => {
 
       <section className="clientes-section">
         <div className="container-central">
+          {/* 🔗 Botão de Relatórios (PDF) — só gerente vê */}
+          {isGerente && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button
+                className="btn roxo"
+                onClick={() => navigate("/relatorios/os")}
+                title="Gerar relatórios em PDF"
+              >
+                📄 RELATÓRIOS (PDF)
+              </button>
+            </div>
+          )}
+
           <div className="filtros-clientes">
             <input
               type="text"
@@ -225,15 +241,14 @@ const OrdensServico: React.FC = () => {
       </div>
 
       {mostrarModal && ordemAtual && (
-  <ConfirmarExclusao
-    entidadeLabel="Ordem de Serviço"
-    artigo="a"
-    nome={`${ordemAtual.nome_cliente} - ${ordemAtual.tipo_equipamento}`}
-    onConfirmar={excluirOrdem}
-    onFechar={() => setMostrarModal(false)}
-  />
-)}
-
+        <ConfirmarExclusao
+          entidadeLabel="Ordem de Serviço"
+          artigo="a"
+          nome={`${ordemAtual.nome_cliente} - ${ordemAtual.tipo_equipamento}`}
+          onConfirmar={excluirOrdem}
+          onFechar={() => setMostrarModal(false)}
+        />
+      )}
     </MenuLateral>
   );
 };

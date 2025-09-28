@@ -48,6 +48,7 @@ import CadastrarOrdem from "./pages/ordem/CadastrarOrdem";
 import AlterarOrdem from "./pages/ordem/AlterarOrdem";
 import OrdensInativas from "./pages/ordem/OrdensInativas";
 import OrdemDetalhe from "./pages/ordem/OrdemDetalhe";
+import RelatorioOS from "./pages/Relatorios/RelatorioOS";
 
 const App: React.FC = () => {
   return (
@@ -98,6 +99,8 @@ const App: React.FC = () => {
           <Route path="/ordemservico/alterar" element={<AlterarOrdem />} />
           <Route path="/ordemservico/inativos" element={<OrdensInativas />} />
           <Route path="/ordemservico/detalhes/:id" element={<OrdemDetalhe />} />
+          <Route path="/relatorios/os" element={<RelatorioOS />} />
+
         </Route>
 
         {/* raiz/catch-all */}
