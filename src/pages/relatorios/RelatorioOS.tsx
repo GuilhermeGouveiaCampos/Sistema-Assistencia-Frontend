@@ -2,8 +2,124 @@
 import React, { useEffect, useMemo, useState } from "react";
 import MenuLateral from "../../components/MenuLateral";
 import api from "../../services/api";
+import "../dashboard/Dashboard.css";
+import "../Css/Pesquisa.css";
 
 type ItemSel = { id: number; label: string };
+
+// --- Componente auxiliar: lista de checkboxes com cabeçalho colorido ---
+function CheckboxCard(props: {
+  title: string;
+  colorClass: string; // ex: "bg-indigo-600"
+  items: ItemSel[];
+  selected: number[];
+  onChange: (next: number[]) => void;
+}) {
+  const { title, colorClass, items, selected, onChange } = props;
+
+  const toggle = (id: number) => {
+    if (selected.includes(id)) onChange(selected.filter((i) => i !== id));
+    else onChange([...selected, id]);
+  };
+
+  const allSelected = items.length > 0 && selected.length === items.length;
+
+  return (
+    <div
+      className="rounded-2xl border shadow-sm"
+      style={{ overflow: "hidden", background: "white" }}
+    >
+      <div
+        className={`${colorClass}`}
+        style={{
+          padding: "10px 14px",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontWeight: 600,
+        }}
+      >
+        <span>{title}</span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => onChange(items.map((i) => i.id))}
+            style={{
+              background: "rgba(255,255,255,.18)",
+              border: "1px solid rgba(255,255,255,.35)",
+              color: "white",
+              padding: "2px 8px",
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+          >
+            Selecionar tudo
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            style={{
+              background: "rgba(255,255,255,.18)",
+              border: "1px solid rgba(255,255,255,.35)",
+              color: "white",
+              padding: "2px 8px",
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+          >
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      <div style={{ padding: 12 }}>
+        {items.length === 0 ? (
+          <div style={{ opacity: 0.7, fontSize: 14 }}>Nenhum item.</div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 8,
+              maxHeight: 280,
+              overflow: "auto",
+              paddingRight: 4,
+            }}
+          >
+            {items.map((it) => (
+              <label
+                key={it.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  border: "1px solid #e6e6e6",
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  background: selected.includes(it.id) ? "#f5f7ff" : "white",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(it.id)}
+                  onChange={() => toggle(it.id)}
+                />
+                <span>{it.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        {items.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+            {selected.length} / {items.length} selecionado(s)
+            {allSelected ? " (Todos)" : ""}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const RelatorioOS: React.FC = () => {
   // Somente gerente (id === "1") vê esta página
@@ -58,15 +174,6 @@ const RelatorioOS: React.FC = () => {
     loadTecnicos();
   }, [isGerente]);
 
-  // Util: trata múltiplos selects numéricos
-  const handleMultiNumber = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-    setter: (ids: number[]) => void
-  ) => {
-    const values = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
-    setter(values);
-  };
-
   // ---- Gerar PDF ----
   const gerarPDF = async () => {
     try {
@@ -79,12 +186,10 @@ const RelatorioOS: React.FC = () => {
       if (from) params.set("from", from);
       if (to) params.set("to", to);
 
-      // Requisição de arquivo (blob)
       const res = await api.get(`/api/relatorios/os?${params.toString()}`, {
         responseType: "blob",
       });
 
-      // Baixar
       const blob = new Blob([res.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -103,89 +208,140 @@ const RelatorioOS: React.FC = () => {
   if (!isGerente) {
     return (
       <MenuLateral>
-        <div className="p-6">
-          <h1 className="text-2xl font-semibold mb-4">Relatório de Ordens de Serviço</h1>
-          <div className="rounded border p-4 bg-red-500/10 border-red-500/30 text-red-600">
-            Acesso restrito. Esta área é exclusiva do gerente.
+        <h1 className="titulo-clientes">RELATÓRIO DE ORDENS DE SERVIÇO</h1>
+        <section className="clientes-section">
+          <div className="container-central">
+            <div className="rounded border p-4" style={{ color: "#b91c1c", background: "#fee2e2" }}>
+              Acesso restrito. Esta área é exclusiva do gerente.
+            </div>
           </div>
-        </div>
+        </section>
       </MenuLateral>
     );
   }
 
   return (
     <MenuLateral>
-      <div className="p-6 space-y-6">
-        <h1 className="text-2xl font-semibold">Relatório de Ordens de Serviço</h1>
+      {/* Título padrão da aplicação (caixa alta) */}
+      <h1 className="titulo-clientes">RELATÓRIO DE ORDENS DE SERVIÇO</h1>
 
-        {/* STATUS */}
-        <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="mb-2 font-medium">Status</div>
-          <select
-            multiple
-            value={statusSel.map(String)}
-            onChange={(e) => handleMultiNumber(e, setStatusSel)}
-            className="w-full border rounded p-2 min-h-[52px]"
+      <section className="clientes-section">
+        <div className="container-central" style={{ display: "grid", gap: 16 }}>
+          {/* Linhas de filtros (Status / Técnicos) */}
+          <div
+            className="grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr",
+              gap: 16,
+            }}
           >
-            {statusList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <CheckboxCard
+              title="Status"
+              colorClass="bg-indigo-600"
+              items={statusList}
+              selected={statusSel}
+              onChange={setStatusSel}
+            />
 
-        {/* TÉCNICOS */}
-        <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="mb-2 font-medium">Técnicos</div>
-          <select
-            multiple
-            value={tecnicosSel.map(String)}
-            onChange={(e) => handleMultiNumber(e, setTecnicosSel)}
-            className="w-full border rounded p-2 min-h-[52px]"
+            <CheckboxCard
+              title="Técnicos"
+              colorClass="bg-emerald-600"
+              items={tecnicos}
+              selected={tecnicosSel}
+              onChange={setTecnicosSel}
+            />
+          </div>
+
+          {/* Período */}
+          <div
+            className="rounded-2xl border shadow-sm"
+            style={{ overflow: "hidden", background: "white" }}
           >
-            {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* PERÍODO */}
-        <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="mb-2 font-medium">Período (de/até)</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col">
-              <label className="text-sm opacity-80 mb-1">De</label>
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="border rounded p-2"
-              />
+            <div
+              className="bg-rose-600"
+              style={{ padding: "10px 14px", color: "white", fontWeight: 600 }}
+            >
+              Período (de/até)
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm opacity-80 mb-1">Até</label>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="border rounded p-2"
-              />
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 12,
+                padding: 12,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-sm" style={{ opacity: 0.8 }}>
+                  De
+                </label>
+                <input
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="border rounded p-2"
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-sm" style={{ opacity: 0.8 }}>
+                  Até
+                </label>
+                <input
+                  type="date"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="border rounded p-2"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div>
-          <button
-            className="px-4 py-2 rounded bg-indigo-600 text-white hover:opacity-90 disabled:opacity-60"
-            onClick={gerarPDF}
-            disabled={carregando}
-          >
-            Gerar PDF
-          </button>
+          {/* Ações */}
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              className="btn"
+              style={{
+                background: "#6b7280",
+                color: "white",
+                padding: "10px 14px",
+                borderRadius: 10,
+              }}
+              onClick={() => {
+                setStatusSel([]);
+                setTecnicosSel([]);
+                setFrom("");
+                setTo("");
+              }}
+              disabled={carregando}
+            >
+              Limpar filtros
+            </button>
+
+            <button
+              className="btn"
+              style={{
+                background: "#6d28d9",
+                color: "white",
+                padding: "10px 14px",
+                borderRadius: 10,
+              }}
+              onClick={gerarPDF}
+              disabled={carregando}
+              title="Gerar PDF"
+            >
+              Gerar PDF
+            </button>
+          </div>
         </div>
+      </section>
+
+      <div className="voltar-container">
+        <button className="btn roxo" onClick={() => (window.location.href = "/ordemservico")}>
+          VOLTAR
+        </button>
       </div>
     </MenuLateral>
   );
