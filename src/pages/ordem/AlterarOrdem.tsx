@@ -31,11 +31,19 @@ const AlterarOrdem: React.FC = () => {
   const navigate = useNavigate();
   const nomeUsuario = localStorage.getItem("nome") || "Usuário";
 
+  // 🔐 nível do usuário (3 = técnico)
+  const nivelUsuario =
+    Number(localStorage.getItem('nivel') ??
+          localStorage.getItem('nivel_acesso') ??
+          localStorage.getItem('nivelUsuario') ?? '0');
+  const isTecnico = nivelUsuario === 3;
+
   const [idOrdem, setIdOrdem] = useState<number | null>(null);
   const [nomeCliente, setNomeCliente] = useState('');
   const [equipamentoInfo, setEquipamentoInfo] = useState('');
   const [status, setStatus] = useState<number>(0);
   const [descricao, setDescricao] = useState('');
+  const [descricaoServico, setDescricaoServico] = useState(''); // 👈 novo (somente técnico)
   const [dataCriacao, setDataCriacao] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -86,6 +94,7 @@ const AlterarOrdem: React.FC = () => {
     setNomeCliente(ordem.nome_cliente ?? '');
     setEquipamentoInfo(`${ordem.tipo_equipamento ?? ''} ${ordem.marca ?? ''} ${ordem.modelo ?? ''} - ${ordem.numero_serie ?? ''}`.trim());
     setDescricao(ordem.descricao_problema || '');
+    setDescricaoServico(ordem.descricao_servico || ''); // 👈 carrega se existir
 
     const data = String(ordem.data_entrada || ordem.data_criacao || ordem.data_atualizacao || '');
     setDataCriacao(data.includes('T') ? data.split('T')[0] : data.substring(0, 10));
@@ -187,11 +196,16 @@ const AlterarOrdem: React.FC = () => {
       return;
     }
 
-    const ordemAtualizada = {
+    const ordemAtualizada: any = {
       descricao_problema: (descricao || '').trim(),
       id_local: idLocal,  // string: "LOC002"
       id_status: status   // número
     };
+
+    // 👇 só técnico pode enviar/alterar a descrição do serviço
+    if (isTecnico) {
+      ordemAtualizada.descricao_servico = (descricaoServico || '').trim();
+    }
 
     try {
       await api.put(`/api/ordens/${idOrdem}`, ordemAtualizada);
@@ -351,6 +365,28 @@ const AlterarOrdem: React.FC = () => {
                 className="input-estilizado input-disabled"
               />
             </label>
+
+            {/* 👇 Só técnico vê e edita */}
+            {isTecnico && (
+              <label>
+                <span>🧰 DESCRIÇÃO DO SERVIÇO (técnico)</span>
+                <textarea
+                  value={descricaoServico}
+                  onChange={(e) => setDescricaoServico(e.target.value)}
+                  rows={3}
+                  placeholder="Descreva o que foi/será executado no item"
+                  style={{
+                    backgroundColor: '#000',
+                    color: '#fff',
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #555',
+                    borderRadius: '4px',
+                    resize: 'vertical',
+                  }}
+                />
+              </label>
+            )}
 
             <label>
               <span>🏷️ TAG CADASTRADA NA OS</span>

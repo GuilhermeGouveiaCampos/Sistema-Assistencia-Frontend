@@ -117,6 +117,20 @@ const CadastrarOrdem: React.FC = () => {
     }
   };
 
+  // --- toast util simples (sem dependências) ---
+  function showToast(text: string, color: string = '#4caf50') {
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = `
+      position: fixed; top: 20px; right: 20px;
+      background: ${color}; color: white; padding: 10px 15px;
+      border-radius: 6px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      font-size: 14px; max-width: 340px;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
   /** ------------ EQUIPAMENTO / TÉCNICO AUTO ------------ */
   const handleEquipamentoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const equipamentoId = Number(e.target.value);
@@ -124,40 +138,31 @@ const CadastrarOrdem: React.FC = () => {
 
     const equipamentoSelecionado = equipamentos.find((eq) => eq.id_equipamento === equipamentoId);
     if (!equipamentoSelecionado) {
-      alert('Equipamento não encontrado.');
+      showToast('Equipamento não encontrado.', '#ff5722');
       return;
     }
 
     const tipoEquipamento = equipamentoSelecionado.tipo;
     try {
       const encodedTipo = encodeURIComponent(tipoEquipamento);
-      const response = await api.get(`/api/tecnicos/menos-carregados/${encodedTipo}`);
-      const tecnico = response.data;
+      // ✅ rota correta + await
+      const { data: tecnico } = await api.get(
+        `/api/tecnicos-balanceados/menos-carregados/${encodedTipo}`
+      );
 
       setIdTecnico(`${tecnico.nome} - AUTO`);
       setSelectedTecnicoId(tecnico.id_tecnico);
 
-      // Toast simples
-      const toast = document.createElement('div');
-      toast.textContent = `👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`;
-      toast.style.cssText = `
-        position: fixed; top: 20px; right: 20px;
-        background: #4caf50; color: white; padding: 10px 15px;
-        border-radius: 5px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3500);
+      if (tecnico.mensagem) {
+        // fallback — sem especialista, pegou geral menos carregado
+        showToast(`⚠️ ${tecnico.mensagem}`, '#ff9800');
+      } else {
+        // preferencial — especialista encontrado
+        showToast(`👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`, '#4caf50');
+      }
     } catch (error: any) {
       console.error('Erro ao buscar técnico automaticamente:', error);
-      const aviso = document.createElement('div');
-      aviso.textContent = '⚠️ Nenhum técnico disponível com essa especialização. Escolha manualmente.';
-      aviso.style.cssText = `
-        position: fixed; top: 20px; right: 20px;
-        background: #ff9800; color: white; padding: 10px 15px;
-        border-radius: 5px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      `;
-      document.body.appendChild(aviso);
-      setTimeout(() => aviso.remove(), 3500);
+      showToast('⚠️ Não encontramos especialista. Escolha o técnico manualmente.', '#ff9800');
     }
   };
 
