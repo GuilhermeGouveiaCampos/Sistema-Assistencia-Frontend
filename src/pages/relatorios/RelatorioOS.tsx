@@ -284,32 +284,77 @@ const RelatorioOS: React.FC = () => {
     return params;
   };
 
+  // ---- Normalizador comum ----
+  const normalizaResultados = (arr: any[]): OrdemResumo[] =>
+    arr.map((x: any) => ({
+      id_os: x.id_os ?? x.id ?? x.os ?? "-",
+      cliente: x.cliente ?? x.nome_cliente ?? undefined,
+      tecnico: x.tecnico ?? x.nome_tecnico ?? undefined,
+      status: x.status ?? x.nome_status ?? x.descricao_status ?? undefined,
+      criado_em: x.criado_em ?? x.data ?? x.created_at ?? undefined,
+      total:
+        typeof x.total === "number"
+          ? x.total
+          : Number(x.total_valor ?? x.valor_total ?? NaN),
+    }));
+
   // ---- Buscar resultados JSON e mostrar na tela ----
   const buscarResultados = async () => {
     try {
       setCarregandoResultados(true);
       const params = montarParams();
-      params.set("format", "json"); // (se o back não suportar, cairá no catch)
-      const res = await api.get(`/api/relatorios/os?${params.toString()}`);
-      const arr = Array.isArray(res.data) ? res.data : [];
-      const norm: OrdemResumo[] = arr.map((x: any) => ({
-        id_os: x.id_os ?? x.id ?? x.os ?? "-",
-        cliente: x.cliente ?? x.nome_cliente ?? undefined,
-        tecnico: x.tecnico ?? x.nome_tecnico ?? undefined,
-        status: x.status ?? x.nome_status ?? x.descricao_status ?? undefined,
-        criado_em: x.criado_em ?? x.data ?? x.created_at ?? undefined,
-        total:
-          typeof x.total === "number"
-            ? x.total
-            : Number(x.total_valor ?? x.valor_total ?? NaN),
-      }));
-      setResultados(norm);
+      params.set("format", "json");
+
+      // 1) Tenta obter JSON de verdade
+      const res = await api.get(`/api/relatorios/os`, {
+        params,
+        headers: { Accept: "application/json" },
+        responseType: "json",
+        // valida status 2xx apenas
+        validateStatus: (s) => s >= 200 && s < 300,
+      });
+
+      const ct = String(res.headers?.["content-type"] || "");
+      if (!ct.includes("application/json")) {
+        // 2) Se não veio como JSON, tenta interpretar como texto e parsear
+        try {
+          const resText = await api.get(`/api/relatorios/os`, {
+            params,
+            responseType: "text",
+            headers: { Accept: "application/json,text/plain;q=0.9,*/*;q=0.8" },
+          });
+          const parsed = JSON.parse(resText.data);
+          if (!Array.isArray(parsed)) throw new Error("not-array");
+          setResultados(normalizaResultados(parsed));
+          return;
+        } catch {
+          // 3) Backend não suporta JSON: informa e zera resultados
+          setResultados([]);
+          alert(
+            "O backend ainda não está devolvendo JSON para este relatório.\n" +
+              "Use o botão Gerar PDF (funciona normalmente)."
+          );
+          return;
+        }
+      }
+
+      // JSON OK
+      const data = res.data;
+      if (!Array.isArray(data)) {
+        setResultados([]);
+        alert(
+          "Resposta recebida não está no formato esperado (array JSON).\n" +
+            "Use o botão Gerar PDF enquanto ajustamos o backend."
+        );
+        return;
+      }
+      setResultados(normalizaResultados(data));
     } catch (e) {
       console.error("Falha ao buscar resultados JSON:", e);
       setResultados([]);
       alert(
         "Não foi possível obter os resultados em JSON.\n" +
-          "Se o backend ainda não suporta ?format=json, use apenas o botão Gerar PDF."
+          "Use o botão Gerar PDF (funciona normalmente)."
       );
     } finally {
       setCarregandoResultados(false);
@@ -320,7 +365,8 @@ const RelatorioOS: React.FC = () => {
   const gerarPDF = async () => {
     try {
       const params = montarParams();
-      const res = await api.get(`/api/relatorios/os?${params.toString()}`, {
+      const res = await api.get(`/api/relatorios/os`, {
+        params,
         responseType: "blob",
       });
 
@@ -446,6 +492,7 @@ const RelatorioOS: React.FC = () => {
           {/* ====== Ações dos filtros ====== */}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
+              type="button"
               className="btn"
               style={{
                 background: "#6b7280",
@@ -466,6 +513,7 @@ const RelatorioOS: React.FC = () => {
             </button>
 
             <button
+              type="button"
               className="btn"
               style={{
                 background: "#0ea5e9",
@@ -487,6 +535,7 @@ const RelatorioOS: React.FC = () => {
           {/* ====== Botão Gerar PDF no fim ====== */}
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button
+              type="button"
               className="btn"
               style={{
                 background: "#6d28d9",
@@ -505,6 +554,7 @@ const RelatorioOS: React.FC = () => {
           {/* Voltar */}
           <div className="voltar-container">
             <button
+              type="button"
               className="btn roxo"
               onClick={() => (window.location.href = "/ordemservico")}
             >

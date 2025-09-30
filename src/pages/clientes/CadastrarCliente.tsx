@@ -26,6 +26,15 @@ const CadastrarCliente: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [cpfValido, setCpfValido] = useState(true);
 
+  // 🏠 Endereço
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
+
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, '')
@@ -40,6 +49,13 @@ const CadastrarCliente: React.FC = () => {
       .replace(/(\d{2})(\d)/, '($1) $2')
       .replace(/(\d{5})(\d)/, '$1-$2')
       .slice(0, 15);
+  };
+
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .slice(0, 8)
+      .replace(/(\d{5})(\d)/, '$1-$2');
   };
 
   const validarCPF = (cpfStr: string): boolean => {
@@ -59,15 +75,59 @@ const CadastrarCliente: React.FC = () => {
     return digito1 === parseInt(cpf[9]) && digito2 === parseInt(cpf[10]);
   };
 
+  const buscarCEP = async () => {
+    const cepNum = cep.replace(/\D/g, '');
+    if (cepNum.length !== 8) {
+      alert('Informe um CEP válido (8 dígitos).');
+      return;
+    }
+    try {
+      setBuscandoCep(true);
+      const res = await fetch(`https://viacep.com.br/ws/${cepNum}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        alert('CEP não encontrado.');
+        return;
+      }
+      setRua(String(data.logradouro || ''));
+      setBairro(String(data.bairro || ''));
+      setCidade(String(data.localidade || ''));
+      setEstado(String(data.uf || ''));
+      // número é manual mesmo
+    } catch (e) {
+      console.error('Falha ao buscar CEP:', e);
+      alert('Não foi possível consultar o CEP agora.');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // validações simples
+    if (!cep || cep.replace(/\D/g, '').length !== 8) {
+      alert('Informe um CEP válido.');
+      return;
+    }
+    if (!rua || !bairro || !cidade || !estado) {
+      const ok = confirm('Endereço incompleto. Deseja continuar mesmo assim?');
+      if (!ok) return;
+    }
 
     const novoCliente = {
       nome,
       cpf, // se o backend exigir só dígitos, use: cpf.replace(/\D/g, '')
       telefone,
       data_nascimento: dataNascimento,
-      status: 'ativo'
+      status: 'ativo',
+      // 🔽 campos de endereço
+      cep: cep.replace(/\D/g, ''),
+      rua,
+      numero,
+      bairro,
+      cidade,
+      estado,
     };
 
     try {
@@ -174,6 +234,95 @@ const CadastrarCliente: React.FC = () => {
                   icon={<FaCalendarAlt color="#fff" />}
                 />
               </div>
+            </label>
+
+            {/* 🏠 ENDEREÇO */}
+            <div className="subtitulo" style={{ marginTop: 10, marginBottom: 4, fontWeight: 700 }}>
+              Endereço
+            </div>
+
+            <label>
+              <span>📍 CEP</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="00000-000"
+                  value={cep}
+                  onChange={e => setCep(formatCEP(e.target.value))}
+                  onBlur={() => {
+                    // auto buscar ao sair do campo se tiver 8 dígitos
+                    if (cep.replace(/\D/g, '').length === 8) buscarCEP();
+                  }}
+                  maxLength={9}
+                  required
+                />
+                <button
+                  type="button"
+                  className="btn preto"
+                  onClick={buscarCEP}
+                  disabled={buscandoCep}
+                  title="Buscar endereço pelo CEP"
+                >
+                  {buscandoCep ? 'BUSCANDO...' : 'BUSCAR CEP'}
+                </button>
+              </div>
+              <small style={{ opacity: .7 }}>Usamos o ViaCEP para preencher rua/bairro/cidade/estado automaticamente.</small>
+            </label>
+
+            <label>
+              <span>🛣️ RUA (Logradouro)</span>
+              <input
+                type="text"
+                placeholder="Ex.: Avenida Brasil"
+                value={rua}
+                onChange={e => setRua(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏠 NÚMERO</span>
+              <input
+                type="text"
+                placeholder="Ex.: 123"
+                value={numero}
+                onChange={e => setNumero(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏘️ BAIRRO</span>
+              <input
+                type="text"
+                placeholder="Ex.: Centro"
+                value={bairro}
+                onChange={e => setBairro(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏙️ CIDADE</span>
+              <input
+                type="text"
+                placeholder="Ex.: São Paulo"
+                value={cidade}
+                onChange={e => setCidade(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🗺️ ESTADO (UF)</span>
+              <input
+                type="text"
+                placeholder="UF"
+                value={estado}
+                onChange={e => setEstado(e.target.value.toUpperCase().slice(0,2))}
+                maxLength={2}
+                required
+              />
             </label>
 
             <div className="acoes-clientes">

@@ -78,6 +78,36 @@ const AlterarOrdem: React.FC = () => {
   const setCacheBound = (osId: number, uid: string) => localStorage.setItem(cacheKey(osId), uid || '');
   const getCacheBound = (osId: number) => localStorage.getItem(cacheKey(osId)) || '';
 
+  // 🔔 Escutar eventos de WhatsApp (SSE) e mostrar toast
+  useEffect(() => {
+    const base = (import.meta as any)?.env?.VITE_API_URL
+      ? String((import.meta as any).env.VITE_API_URL).replace(/\/$/, '')
+      : '';
+    const url = `${base}/api/whats/events`;
+
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(url);
+      es.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data?.type === 'whats:sent') {
+            const destinatario = data?.to || 'destinatário';
+            pushToast({ type: 'success', text: `📨 WhatsApp enviado para ${destinatario}.` }, 4000);
+          }
+        } catch {
+          /* ignora JSON inválido */
+        }
+      };
+      es.onerror = () => {
+        // opcional: reconectar manualmente ou avisar o usuário
+      };
+    } catch {
+      // EventSource indisponível
+    }
+    return () => { es?.close(); };
+  }, []); // monta uma vez
+
   // carrega dados iniciais
   useEffect(() => {
     const ordemString = localStorage.getItem("ordemSelecionada");
