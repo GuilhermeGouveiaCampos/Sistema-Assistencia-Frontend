@@ -11,7 +11,6 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { ptBR } from 'date-fns/locale';
 import { FaCalendarAlt } from 'react-icons/fa';
 
-// ✅ use o cliente axios central com baseURL = import.meta.env.VITE_API_URL
 import api from '../../services/api';
 
 const AlterarCliente: React.FC = () => {
@@ -27,6 +26,10 @@ const AlterarCliente: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [cpfValido, setCpfValido] = useState(true);
+
+  // 🔧 equipamentos
+  const [equipamentos, setEquipamentos] = useState<any[]>([]);
+  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<string>('');
 
   useEffect(() => {
     const clienteString = localStorage.getItem("clienteSelecionado");
@@ -44,6 +47,13 @@ const AlterarCliente: React.FC = () => {
     setTelefone(cliente.telefone);
     if (cliente.data_nascimento) {
       setDataNascimento(new Date(cliente.data_nascimento));
+    }
+
+    // buscar equipamentos do cliente
+    if (cliente.id_cliente) {
+      api.get(`/api/clientes/${cliente.id_cliente}/equipamentos`)
+        .then(res => setEquipamentos(res.data || []))
+        .catch(() => setEquipamentos([]));
     }
   }, [navigate]);
 
@@ -90,18 +100,31 @@ const AlterarCliente: React.FC = () => {
 
     const clienteAtualizado = {
       nome,
-      cpf, // se o backend exigir só dígitos, use: cpf.replace(/\D/g, '')
+      cpf,
       telefone,
       data_nascimento: dataNascimento.toISOString().split('T')[0]
     };
 
     try {
-      // 🔁 trocado para usar o cliente axios central
       await api.put(`/api/clientes/${idCliente}`, clienteAtualizado);
+
+      if (equipamentoSelecionado) {
+        const eq = equipamentos.find(e => e.id_equipamento == equipamentoSelecionado);
+        if (eq) {
+          await api.put(`/api/equipamentos/${equipamentoSelecionado}`, {
+            tipo: eq.tipo,
+            marca: eq.marca,
+            modelo: eq.modelo,
+            numero_serie: eq.numero_serie,
+            estado: eq.estado
+          });
+        }
+      }
+
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      alert('Erro ao atualizar cliente.');
+      console.error('Erro ao atualizar cliente/equipamento:', error);
+      alert('Erro ao atualizar.');
     }
   };
 
@@ -168,6 +191,22 @@ const AlterarCliente: React.FC = () => {
               </div>
             </label>
 
+            {/* 🔧 equipamentos */}
+            <label>
+              <span>🔧 EQUIPAMENTO</span>
+              <select
+                value={equipamentoSelecionado}
+                onChange={e => setEquipamentoSelecionado(e.target.value)}
+              >
+                <option value="">Selecione o equipamento</option>
+                {equipamentos.map(eq => (
+                  <option key={eq.id_equipamento} value={eq.id_equipamento}>
+                    {`${eq.tipo} ${eq.marca} ${eq.modelo} - ${eq.numero_serie}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div className="acoes-clientes">
               <button type="submit" className="btn azul">SALVAR</button>
               <button
@@ -195,7 +234,6 @@ const AlterarCliente: React.FC = () => {
         </div>
       </section>
 
-      {/* Modal de confirmação de saída */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -218,7 +256,6 @@ const AlterarCliente: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de sucesso */}
       {showSuccessModal && (
         <div className="modal-overlay">
           <div className="modal-content">
