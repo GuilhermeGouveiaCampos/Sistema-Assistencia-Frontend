@@ -31,12 +31,15 @@ const AlterarOrdem: React.FC = () => {
   const navigate = useNavigate();
   const nomeUsuario = localStorage.getItem("nome") || "Usuário";
 
-  // 🔐 nível do usuário (3 = técnico)
-  const nivelUsuario =
-    Number(localStorage.getItem('nivel') ??
-          localStorage.getItem('nivel_acesso') ??
-          localStorage.getItem('nivelUsuario') ?? '0');
-  const isTecnico = nivelUsuario === 3;
+ // 🔐 nível do usuário (3 = técnico) — agora checa também `id_nivel`
+const nivelUsuario = Number(
+  localStorage.getItem('id_nivel') ??
+  localStorage.getItem('nivel') ??
+  localStorage.getItem('nivel_acesso') ??
+  localStorage.getItem('nivelUsuario') ??
+  '0'
+);
+const isTecnico = nivelUsuario === 3;
 
   const [idOrdem, setIdOrdem] = useState<number | null>(null);
   const [nomeCliente, setNomeCliente] = useState('');
@@ -603,3 +606,4 @@ const AlterarOrdem: React.FC = () => {
 };
 
 export default AlterarOrdem;
+  
