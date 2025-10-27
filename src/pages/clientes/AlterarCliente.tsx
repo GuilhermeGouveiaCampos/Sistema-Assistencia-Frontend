@@ -14,8 +14,7 @@ import { FaCalendarAlt } from 'react-icons/fa';
 import api from '../../services/api';
 
 const AlterarCliente: React.FC = () => {
-  const nomeUsuario = localStorage.getItem("nome") || "Usuário";
-  const idUsuario = localStorage.getItem("id");
+  const nomeUsuario = localStorage.getItem('nome') || 'Usuário';
   const navigate = useNavigate();
 
   const [idCliente, setIdCliente] = useState<number | null>(null);
@@ -27,15 +26,11 @@ const AlterarCliente: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [cpfValido, setCpfValido] = useState(true);
 
-  // 🔧 equipamentos
-  const [equipamentos, setEquipamentos] = useState<any[]>([]);
-  const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<string>('');
-
   useEffect(() => {
-    const clienteString = localStorage.getItem("clienteSelecionado");
+    const clienteString = localStorage.getItem('clienteSelecionado');
 
     if (!clienteString) {
-      alert("Nenhum cliente selecionado.");
+      alert('Nenhum cliente selecionado.');
       navigate('/clientes');
       return;
     }
@@ -47,13 +42,6 @@ const AlterarCliente: React.FC = () => {
     setTelefone(cliente.telefone);
     if (cliente.data_nascimento) {
       setDataNascimento(new Date(cliente.data_nascimento));
-    }
-
-    // buscar equipamentos do cliente
-    if (cliente.id_cliente) {
-      api.get(`/api/clientes/${cliente.id_cliente}/equipamentos`)
-        .then(res => setEquipamentos(res.data || []))
-        .catch(() => setEquipamentos([]));
     }
   }, [navigate]);
 
@@ -94,7 +82,7 @@ const AlterarCliente: React.FC = () => {
     e.preventDefault();
 
     if (!idCliente || !dataNascimento) {
-      alert("Dados inválidos.");
+      alert('Dados inválidos.');
       return;
     }
 
@@ -102,28 +90,14 @@ const AlterarCliente: React.FC = () => {
       nome,
       cpf,
       telefone,
-      data_nascimento: dataNascimento.toISOString().split('T')[0]
+      data_nascimento: dataNascimento.toISOString().split('T')[0],
     };
 
     try {
       await api.put(`/api/clientes/${idCliente}`, clienteAtualizado);
-
-      if (equipamentoSelecionado) {
-        const eq = equipamentos.find(e => e.id_equipamento == equipamentoSelecionado);
-        if (eq) {
-          await api.put(`/api/equipamentos/${equipamentoSelecionado}`, {
-            tipo: eq.tipo,
-            marca: eq.marca,
-            modelo: eq.modelo,
-            numero_serie: eq.numero_serie,
-            estado: eq.estado
-          });
-        }
-      }
-
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('Erro ao atualizar cliente/equipamento:', error);
+      console.error('Erro ao atualizar cliente:', error);
       alert('Erro ao atualizar.');
     }
   };
@@ -137,7 +111,7 @@ const AlterarCliente: React.FC = () => {
           <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
             <label>
               <span>👤 NOME</span>
-              <input type="text" value={nome} onChange={e => setNome(e.target.value)} required />
+              <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required />
             </label>
 
             <label>
@@ -152,16 +126,14 @@ const AlterarCliente: React.FC = () => {
                 }}
                 maxLength={14}
                 required
-                className={cpfValido || cpf.length < 14 ? "" : "input-invalido"}
+                className={cpfValido || cpf.length < 14 ? '' : 'input-invalido'}
               />
-
-              {cpf.length === 14 && (
-                cpfValido ? (
+              {cpf.length === 14 &&
+                (cpfValido ? (
                   <span className="cpf-valido">CPF válido ✅</span>
                 ) : (
                   <span className="cpf-invalido">CPF inválido ❌</span>
-                )
-              )}
+                ))}
             </label>
 
             <label>
@@ -169,7 +141,7 @@ const AlterarCliente: React.FC = () => {
               <input
                 type="text"
                 value={telefone}
-                onChange={e => setTelefone(formatTelefone(e.target.value))}
+                onChange={(e) => setTelefone(formatTelefone(e.target.value))}
                 maxLength={15}
                 required
               />
@@ -191,29 +163,15 @@ const AlterarCliente: React.FC = () => {
               </div>
             </label>
 
-            {/* 🔧 equipamentos */}
-            <label>
-              <span>🔧 EQUIPAMENTO</span>
-              <select
-                value={equipamentoSelecionado}
-                onChange={e => setEquipamentoSelecionado(e.target.value)}
-              >
-                <option value="">Selecione o equipamento</option>
-                {equipamentos.map(eq => (
-                  <option key={eq.id_equipamento} value={eq.id_equipamento}>
-                    {`${eq.tipo} ${eq.marca} ${eq.modelo} - ${eq.numero_serie}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <div className="acoes-clientes">
-              <button type="submit" className="btn azul">SALVAR</button>
+              <button type="submit" className="btn azul">
+                SALVAR
+              </button>
               <button
                 type="button"
                 className="btn preto"
                 onClick={() => {
-                  localStorage.removeItem("clienteSelecionado");
+                  localStorage.removeItem('clienteSelecionado');
                   navigate('/clientes');
                 }}
               >
@@ -222,11 +180,7 @@ const AlterarCliente: React.FC = () => {
             </div>
 
             <div className="voltar-container">
-              <button
-                className="btn roxo"
-                type="button"
-                onClick={() => setShowModal(true)}
-              >
+              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>
                 VOLTAR
               </button>
             </div>
@@ -239,14 +193,18 @@ const AlterarCliente: React.FC = () => {
           <div className="modal-content">
             <div className="modal-header">
               <strong>CONFIRMAR ?</strong>
-              <button className="close-btn" onClick={() => setShowModal(false)}>X</button>
+              <button className="close-btn" onClick={() => setShowModal(false)}>
+                X
+              </button>
             </div>
             <p>Deseja mesmo sair sem salvar?</p>
-            <p><strong>Cliente:</strong> {nome}</p>
+            <p>
+              <strong>Cliente:</strong> {nome}
+            </p>
             <button
               className="btn azul"
               onClick={() => {
-                localStorage.removeItem("clienteSelecionado");
+                localStorage.removeItem('clienteSelecionado');
                 navigate('/clientes');
               }}
             >
@@ -265,18 +223,22 @@ const AlterarCliente: React.FC = () => {
                 className="close-btn"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  localStorage.removeItem("clienteSelecionado");
+                  localStorage.removeItem('clienteSelecionado');
                   navigate('/clientes');
                 }}
-              >X</button>
+              >
+                X
+              </button>
             </div>
-            <p>Cliente <strong>{nome}</strong> atualizado com sucesso!</p>
+            <p>
+              Cliente <strong>{nome}</strong> atualizado com sucesso!
+            </p>
             <div className="modal-footer">
               <button
                 className="btn azul"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  localStorage.removeItem("clienteSelecionado");
+                  localStorage.removeItem('clienteSelecionado');
                   navigate('/clientes');
                 }}
               >

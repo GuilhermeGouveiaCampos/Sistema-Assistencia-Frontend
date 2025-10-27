@@ -4,8 +4,6 @@ import '../dashboard/Dashboard.css';
 import '../Css/Cadastrar.css';
 import ModalSucesso from '../../components/ModalSucesso';
 import MenuLateral from '../../components/MenuLateral';
-
-// ✅ cliente axios central (usa import.meta.env.VITE_API_URL)
 import api from '../../services/api';
 
 interface Cliente {
@@ -41,83 +39,29 @@ const CadastrarOrdem: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [locais, setLocais] = useState<Local[]>([]);
-  const [statusInterno, setStatusInterno] = useState('');
+  const [statusLista, setStatusLista] = useState<any[]>([]);
 
-  const [idTecnico, setIdTecnico] = useState('');
-  const [idLocal, setIdLocal] = useState('');
+  // form states
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
+  const [selectedEquipamentoId, setSelectedEquipamentoId] = useState<number | null>(null);
+
+  const [idTecnicoInput, setIdTecnicoInput] = useState(''); // texto de busca/seleção
+  const [selectedTecnicoId, setSelectedTecnicoId] = useState<number | null>(null);
+  const [showDropdownTecnico, setShowDropdownTecnico] = useState(false);
+
+  const [idLocal, setIdLocal] = useState<string>('');        // Recepção por padrão
+  const [statusInterno, setStatusInterno] = useState<number | null>(null); // id_status_os
   const [descricaoProblema, setDescricaoProblema] = useState('');
+
   const [dataCriacao, setDataCriacao] = useState(() => {
     const hoje = new Date();
     return hoje.toISOString().split('T')[0]; // yyyy-MM-dd
   });
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
-  const [showDropdownTecnico, setShowDropdownTecnico] = useState(false);
-  const [selectedTecnicoId, setSelectedTecnicoId] = useState<number | null>(null);
 
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [selectedEquipamentoId, setSelectedEquipamentoId] = useState<number | null>(null);
-
-  const [statusLista, setStatusLista] = useState<any[]>([]);
-  const statusDescricao =
-    statusLista.find((s) => s.id_status === Number(statusInterno))?.descricao || '';
-
-  useEffect(() => {
-    // Carregar clientes
-    api.get('/api/ordens/clientes')
-      .then((res) => setClientes(res.data))
-      .catch((err) => console.error('Erro ao buscar clientes:', err));
-
-    // Carregar técnicos
-    api.get('/api/tecnicos')
-      .then((res) => setTecnicos(res.data))
-      .catch((err) => console.error('Erro ao buscar técnicos:', err));
-
-    // Carregar status da OS
-    api.get('/api/status')
-      .then((res) => {
-        setStatusLista(res.data);
-        const statusRecebido = res.data.find((s: any) =>
-          String(s.descricao || '').toLowerCase().includes('recebido')
-        );
-        if (statusRecebido) setStatusInterno(statusRecebido.id_status);
-      })
-      .catch((err) => console.error('Erro ao buscar status:', err));
-
-    // Buscar locais
-    api.get('/api/locais')
-      .then((res) => {
-        setLocais(res.data);
-        const recepcao = (res.data as Local[]).find((loc: Local) =>
-          String(loc.local_instalado || '').toLowerCase().includes('recepção')
-        );
-        if (recepcao) setIdLocal(recepcao.id_scanner);
-      })
-      .catch((err) => console.error('Erro ao buscar locais:', err));
-  }, []);
-
-  /** ------------ SUBMIT (sem upload de imagens) ------------ */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await api.post('/api/ordens', {
-        id_cliente: selectedClienteId,
-        id_tecnico: selectedTecnicoId,
-        id_equipamento: selectedEquipamentoId,
-        id_local: idLocal,
-        id_status_os: Number(statusInterno),
-        descricao_problema: descricaoProblema,
-        data_criacao: dataCriacao,
-      });
-      if (response.status === 201) setShowSuccessModal(true);
-    } catch (error: any) {
-      console.error('❌ Erro ao cadastrar OS:', error);
-      alert(error?.response?.data?.erro || 'Erro ao cadastrar ordem de serviço.');
-    }
-  };
-
-  // --- toast util simples (sem dependências) ---
+  // util: toast simples
   function showToast(text: string, color: string = '#4caf50') {
     const el = document.createElement('div');
     el.textContent = text;
@@ -125,57 +69,11 @@ const CadastrarOrdem: React.FC = () => {
       position: fixed; top: 20px; right: 20px;
       background: ${color}; color: white; padding: 10px 15px;
       border-radius: 6px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,.2);
-      font-size: 14px; max-width: 340px;
+      font-size: 14px; max-width: 360px;
     `;
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+    setTimeout(() => el.remove(), 3500);
   }
-
-  /** ------------ EQUIPAMENTO / TÉCNICO AUTO ------------ */
-  const handleEquipamentoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const equipamentoId = Number(e.target.value);
-    setSelectedEquipamentoId(equipamentoId);
-
-    const equipamentoSelecionado = equipamentos.find((eq) => eq.id_equipamento === equipamentoId);
-    if (!equipamentoSelecionado) {
-      showToast('Equipamento não encontrado.', '#ff5722');
-      return;
-    }
-
-    const tipoEquipamento = equipamentoSelecionado.tipo;
-    try {
-      const encodedTipo = encodeURIComponent(tipoEquipamento);
-      // ✅ rota correta + await
-      const { data: tecnico } = await api.get(
-        `/api/tecnicos-balanceados/menos-carregados/${encodedTipo}`
-      );
-
-      setIdTecnico(`${tecnico.nome} - AUTO`);
-      setSelectedTecnicoId(tecnico.id_tecnico);
-
-      if (tecnico.mensagem) {
-        // fallback — sem especialista, pegou geral menos carregado
-        showToast(`⚠️ ${tecnico.mensagem}`, '#ff9800');
-      } else {
-        // preferencial — especialista encontrado
-        showToast(`👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`, '#4caf50');
-      }
-    } catch (error: any) {
-      console.error('Erro ao buscar técnico automaticamente:', error);
-      showToast('⚠️ Não encontramos especialista. Escolha o técnico manualmente.', '#ff9800');
-    }
-  };
-
-  const handleClienteChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clienteId = Number(e.target.value);
-    setSelectedClienteId(clienteId);
-    try {
-      const response = await api.get(`/api/equipamentos/por-cliente/${clienteId}`);
-      setEquipamentos(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar equipamentos por cliente:', error);
-    }
-  };
 
   function formatarCPF(cpf: string) {
     return cpf
@@ -186,16 +84,134 @@ const CadastrarOrdem: React.FC = () => {
       .substring(0, 14);
   }
 
+  // -------- carregamentos iniciais --------
+  useEffect(() => {
+    api.get('/api/ordens/clientes')
+      .then((res) => setClientes(res.data || []))
+      .catch((err) => console.error('Erro ao buscar clientes:', err));
+
+    api.get('/api/tecnicos')
+      .then((res) => setTecnicos(res.data || []))
+      .catch((err) => console.error('Erro ao buscar técnicos:', err));
+
+    api.get('/api/status')
+      .then((res) => {
+        const lista = res.data || [];
+        setStatusLista(lista);
+        const recebido = lista.find((s: any) =>
+          String(s.descricao || '').toLowerCase().includes('receb')
+        );
+        if (recebido) setStatusInterno(Number(recebido.id_status));
+      })
+      .catch((err) => console.error('Erro ao buscar status:', err));
+
+    api.get('/api/locais')
+      .then((res) => {
+        const ls: Local[] = res.data || [];
+        setLocais(ls);
+        const recepcao = ls.find((l) =>
+          String(l.local_instalado || '').toLowerCase().includes('recep')
+        );
+        if (recepcao) setIdLocal(recepcao.id_scanner);
+        else if (ls.length) setIdLocal(ls[0].id_scanner);
+      })
+      .catch((err) => console.error('Erro ao buscar locais:', err));
+  }, []);
+
+  const statusDescricao =
+    statusLista.find((s) => Number(s.id_status) === Number(statusInterno))?.descricao || '';
+
+  // -------- handlers --------
+  const handleClienteChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const clienteId = Number(e.target.value) || null;
+    setSelectedClienteId(clienteId);
+    setSelectedEquipamentoId(null);
+    if (!clienteId) {
+      setEquipamentos([]);
+      return;
+    }
+    try {
+      const response = await api.get(`/api/equipamentos/por-cliente/${clienteId}`);
+      setEquipamentos(response.data || []);
+    } catch (error) {
+      console.error('Erro ao buscar equipamentos por cliente:', error);
+      setEquipamentos([]);
+    }
+  };
+
+  const handleEquipamentoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const equipamentoId = Number(e.target.value) || null;
+    setSelectedEquipamentoId(equipamentoId);
+
+    if (!equipamentoId) return;
+    const equipamentoSelecionado = equipamentos.find((eq) => eq.id_equipamento === equipamentoId);
+    if (!equipamentoSelecionado) return;
+
+    try {
+      const encoded = encodeURIComponent(equipamentoSelecionado.tipo);
+      const { data: tecnico } = await api.get(`/api/tecnicos-balanceados/menos-carregados/${encoded}`);
+
+      setIdTecnicoInput(`${tecnico.nome} - AUTO`);
+      setSelectedTecnicoId(tecnico.id_tecnico);
+
+      if (tecnico.mensagem) {
+        showToast(`⚠️ ${tecnico.mensagem}`, '#ff9800');
+      } else {
+        showToast(`👨‍🔧 Técnico ${tecnico.nome} atribuído automaticamente`, '#4caf50');
+      }
+    } catch (error) {
+      console.error('Erro na atribuição automática de técnico:', error);
+      showToast('⚠️ Não encontramos especialista. Escolha o técnico manualmente.', '#ff9800');
+    }
+  };
+
+  // -------- submit --------
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedClienteId) return showToast('Selecione o cliente.', '#e53935');
+    if (!selectedEquipamentoId) return showToast('Selecione o equipamento.', '#e53935');
+    if (!selectedTecnicoId) return showToast('Selecione o técnico (ou aguarde atribuição automática).', '#e53935');
+    if (!idLocal) return showToast('Local inválido. Verifique os locais cadastrados.', '#e53935');
+    if (!statusInterno) return showToast('Status inicial não encontrado.', '#e53935');
+    if (!descricaoProblema.trim()) return showToast('Descreva o problema.', '#e53935');
+
+    const payload = {
+      id_cliente: selectedClienteId,
+      id_tecnico: selectedTecnicoId,
+      id_equipamento: selectedEquipamentoId,
+      id_local: idLocal,
+      id_status_os: Number(statusInterno),
+      descricao_problema: descricaoProblema,
+      data_criacao: dataCriacao,
+    };
+
+    try {
+      const resp = await api.post('/api/ordens', payload);
+      if (resp.status === 201) setShowSuccessModal(true);
+      else showToast('Resposta inesperada do servidor.', '#ff9800');
+    } catch (error: any) {
+      if (error?.response) {
+        console.error('❌ Erro ao cadastrar OS:', error.response.status, error.response.data);
+        alert(error.response.data?.erro || `Erro ${error.response.status} ao cadastrar ordem.`);
+      } else {
+        console.error('❌ Erro ao cadastrar OS:', error);
+        alert('Falha na comunicação ao cadastrar ordem.');
+      }
+    }
+  };
+
   return (
     <MenuLateral>
       <h1 className="titulo-clientes">CADASTRAR ORDEM DE SERVIÇO</h1>
+
       <section className="clientes-section">
         <div className="container-central">
           <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
             {/* CLIENTE */}
             <label>
               <span>👤 CLIENTE</span>
-              <select value={selectedClienteId ?? ''} onChange={handleClienteChange}>
+              <select value={selectedClienteId ?? ''} onChange={handleClienteChange} required>
                 <option value="">Selecione o cliente</option>
                 {clientes.map((cli) => (
                   <option key={cli.id_cliente} value={cli.id_cliente}>
@@ -208,7 +224,11 @@ const CadastrarOrdem: React.FC = () => {
             {/* EQUIPAMENTO */}
             <label>
               <span>🔧 EQUIPAMENTO</span>
-              <select value={selectedEquipamentoId ?? ''} onChange={handleEquipamentoChange} required>
+              <select
+                value={selectedEquipamentoId ?? ''}
+                onChange={handleEquipamentoChange}
+                required
+              >
                 <option value="">Selecione o equipamento</option>
                 {equipamentos.map((eq) => (
                   <option key={eq.id_equipamento} value={eq.id_equipamento}>
@@ -246,29 +266,28 @@ const CadastrarOrdem: React.FC = () => {
                 type="text"
                 className="input-pesquisavel"
                 placeholder="Busque por nome ou CPF"
-                value={idTecnico}
+                value={idTecnicoInput}
                 onChange={(e) => {
                   const input = e.target.value;
-                  const cpfFormatado = formatarCPF(input);
-                  setIdTecnico(cpfFormatado);
+                  setIdTecnicoInput(input);
                   setShowDropdownTecnico(true);
                 }}
                 onFocus={() => setShowDropdownTecnico(true)}
                 onBlur={() => setTimeout(() => setShowDropdownTecnico(false), 200)}
+                required
               />
 
               {showDropdownTecnico && (
                 <ul className="autocomplete-dropdown">
                   {tecnicos
                     .filter((tec) =>
-                      `${tec.nome} ${tec.cpf}`.replace(/\D/g, '').toLowerCase()
-                        .includes(idTecnico.replace(/\D/g, '').toLowerCase())
+                      `${tec.nome} ${tec.cpf}`.toLowerCase().includes(idTecnicoInput.toLowerCase().replace(/\s+/g, ' '))
                     )
                     .map((tec) => (
                       <li
                         key={tec.id_tecnico}
                         onClick={() => {
-                          setIdTecnico(`${tec.nome} - ${tec.cpf}`);
+                          setIdTecnicoInput(`${tec.nome} - ${tec.cpf}`);
                           setSelectedTecnicoId(tec.id_tecnico);
                           setShowDropdownTecnico(false);
                         }}
@@ -280,14 +299,19 @@ const CadastrarOrdem: React.FC = () => {
               )}
             </label>
 
-            {/* LOCAL (travado em Recepção) */}
+            {/* LOCAL (travado) */}
             <label>
               <span>🏢 LOCAL</span>
               <select
                 value={idLocal}
                 disabled
                 title="Este campo está travado para 'Recepção'"
-                style={{ backgroundColor: '#000', color: '#fff', cursor: 'not-allowed', border: '1px solid #555' }}
+                style={{
+                  backgroundColor: '#000',
+                  color: '#fff',
+                  cursor: 'not-allowed',
+                  border: '1px solid #555',
+                }}
               >
                 {locais.map((loc) => (
                   <option key={loc.id_scanner} value={loc.id_scanner}>
@@ -304,14 +328,24 @@ const CadastrarOrdem: React.FC = () => {
                 type="text"
                 value={statusDescricao}
                 readOnly
-                style={{ backgroundColor: '#000', color: '#fff', cursor: 'not-allowed', border: '1px solid #555' }}
+                style={{
+                  backgroundColor: '#000',
+                  color: '#fff',
+                  cursor: 'not-allowed',
+                  border: '1px solid #555', // ✅ corrigido
+                }}
               />
             </label>
 
             {/* DATA DE ENTRADA */}
             <label>
               <span>📅 DATA DE ENTRADA</span>
-              <input type="date" value={dataCriacao} onChange={(e) => setDataCriacao(e.target.value)} required />
+              <input
+                type="date"
+                value={dataCriacao}
+                onChange={(e) => setDataCriacao(e.target.value)}
+                required
+              />
             </label>
 
             <div className="acoes-clientes" style={{ marginTop: 16 }}>
@@ -323,8 +357,6 @@ const CadastrarOrdem: React.FC = () => {
           </form>
         </div>
       </section>
-
-      <section className="container">{/* conteúdo extra */}</section>
 
       {showSuccessModal && (
         <ModalSucesso
