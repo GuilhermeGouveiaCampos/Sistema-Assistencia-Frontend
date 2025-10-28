@@ -1,54 +1,62 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import "../Css/Alterar.css";
-import "../Css/Cadastrar.css";
-import "../Css/Pesquisa.css";
-import "../dashboard/Dashboard.css";
-import MenuLateral from "../../components/MenuLateral";
+import '../Css/Alterar.css';
+import '../Css/Cadastrar.css';
+import '../Css/Pesquisa.css';
+import '../dashboard/Dashboard.css';
+import MenuLateral from '../../components/MenuLateral';
 
 // ✅ cliente axios central (usa import.meta.env.VITE_API_URL)
-import api from "../../services/api";
+import api from '../../services/api';
 
 const AlterarTecnico: React.FC = () => {
   const navigate = useNavigate();
-  const nomeUsuario = localStorage.getItem("nome") || "Usuário";
-  const tecnicoStorage = localStorage.getItem("tecnicoSelecionado");
+  const nomeUsuario = localStorage.getItem('nome') || 'Usuário';
 
   const [idTecnico, setIdTecnico] = useState<number | null>(null);
-  const [nome, setNome] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [telefone, setTelefone] = useState("");
+  const [nome, setNome] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // 🔒 Evita alerta indevido após salvar (usa um "flag" no localStorage)
   useEffect(() => {
-    if (!tecnicoStorage) {
-      alert("Nenhum técnico selecionado.");
-      navigate("/tecnicos");
+    const tecnicoStorage = localStorage.getItem('tecnicoSelecionado');
+    const veioDoSucesso = localStorage.getItem('veioDoSucesso');
+
+    if (!tecnicoStorage && !veioDoSucesso) {
+      alert('Nenhum técnico selecionado.');
+      navigate('/tecnicos');
       return;
     }
 
-    const tecnico = JSON.parse(tecnicoStorage);
-    setIdTecnico(tecnico.id_tecnico);
-    setNome(tecnico.nome);
-    setCpf(tecnico.cpf);
-    setTelefone(tecnico.telefone);
-  }, [navigate, tecnicoStorage]);
+    if (tecnicoStorage) {
+      const tecnico = JSON.parse(tecnicoStorage);
+      setIdTecnico(tecnico.id_tecnico);
+      setNome(tecnico.nome);
+      setCpf(tecnico.cpf);
+      setTelefone(tecnico.telefone);
+    }
+
+    // limpa o flag caso exista (para não persistir entre telas)
+    if (veioDoSucesso) localStorage.removeItem('veioDoSucesso');
+  }, [navigate]);
 
   const formatCPF = (value: string) => {
     return value
-      .replace(/\D/g, "")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
   };
 
   const formatTelefone = (value: string) => {
     return value
-      .replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2")
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
       .slice(0, 15);
   };
 
@@ -56,7 +64,7 @@ const AlterarTecnico: React.FC = () => {
     e.preventDefault();
 
     if (!idTecnico) {
-      alert("Dados inválidos.");
+      alert('Dados inválidos.');
       return;
     }
 
@@ -66,9 +74,18 @@ const AlterarTecnico: React.FC = () => {
       await api.put(`/api/tecnicos/${idTecnico}`, tecnicoAtualizado);
       setShowSuccessModal(true);
     } catch (error) {
-      console.error("Erro ao atualizar técnico:", error);
-      alert("Erro ao atualizar técnico.");
+      console.error('Erro ao atualizar técnico:', error);
+      alert('Erro ao atualizar técnico.');
     }
+  };
+
+  // 🔁 ações comuns após sucesso
+  const finishAndGoBack = () => {
+    // seta flag para evitar alerta no useEffect da próxima renderização
+    localStorage.setItem('veioDoSucesso', '1');
+    localStorage.removeItem('tecnicoSelecionado');
+    setShowSuccessModal(false);
+    navigate('/tecnicos');
   };
 
   return (
@@ -78,15 +95,19 @@ const AlterarTecnico: React.FC = () => {
           <div className="modal-content">
             <div className="modal-header">
               <strong>CONFIRMAR ?</strong>
-              <button className="close-btn" onClick={() => setShowModal(false)}>X</button>
+              <button className="close-btn" onClick={() => setShowModal(false)}>
+                X
+              </button>
             </div>
             <p>Deseja mesmo sair sem salvar?</p>
-            <p><strong>Técnico:</strong> {nome}</p>
+            <p>
+              <strong>Técnico:</strong> {nome}
+            </p>
             <button
               className="btn azul"
               onClick={() => {
-                localStorage.removeItem("tecnicoSelecionado");
-                navigate("/tecnicos");
+                localStorage.removeItem('tecnicoSelecionado');
+                navigate('/tecnicos');
               }}
             >
               CONFIRMAR
@@ -101,25 +122,15 @@ const AlterarTecnico: React.FC = () => {
           <div className="modal-content">
             <div className="modal-header">
               <strong>✅ Sucesso!</strong>
-              <button
-                className="close-btn"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  localStorage.removeItem("tecnicoSelecionado");
-                  navigate("/tecnicos");
-                }}
-              >X</button>
+              <button className="close-btn" onClick={finishAndGoBack}>
+                X
+              </button>
             </div>
-            <p>Técnico <strong>{nome}</strong> atualizado com sucesso!</p>
+            <p>
+              Técnico <strong>{nome}</strong> atualizado com sucesso!
+            </p>
             <div className="modal-footer">
-              <button
-                className="btn azul"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  localStorage.removeItem("tecnicoSelecionado");
-                  navigate("/tecnicos");
-                }}
-              >
+              <button className="btn azul" onClick={finishAndGoBack}>
                 OK
               </button>
             </div>
@@ -139,21 +150,39 @@ const AlterarTecnico: React.FC = () => {
 
             <label>
               <span>📄 CPF</span>
-              <input type="text" value={cpf} onChange={(e) => setCpf(formatCPF(e.target.value))} maxLength={14} required />
+              <input
+                type="text"
+                value={cpf}
+                onChange={(e) => setCpf(formatCPF(e.target.value))}
+                maxLength={14}
+                required
+              />
             </label>
 
             <label>
               <span>📞 TELEFONE</span>
-              <input type="text" value={telefone} onChange={(e) => setTelefone(formatTelefone(e.target.value))} maxLength={15} required />
+              <input
+                type="text"
+                value={telefone}
+                onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+                maxLength={15}
+                required
+              />
             </label>
 
             <div className="acoes-clientes">
-              <button type="submit" className="btn azul">SALVAR</button>
-              <button type="button" className="btn preto" onClick={() => setShowModal(true)}>CANCELAR</button>
+              <button type="submit" className="btn azul">
+                SALVAR
+              </button>
+              <button type="button" className="btn preto" onClick={() => setShowModal(true)}>
+                CANCELAR
+              </button>
             </div>
 
             <div className="voltar-container">
-              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>VOLTAR</button>
+              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>
+                VOLTAR
+              </button>
             </div>
           </form>
         </div>
