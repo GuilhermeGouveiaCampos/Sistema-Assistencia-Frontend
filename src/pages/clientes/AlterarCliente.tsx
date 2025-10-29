@@ -16,66 +16,7 @@ import api from '../../services/api';
 const AlterarCliente: React.FC = () => {
   const navigate = useNavigate();
 
-  // Identificação
-  const [idCliente, setIdCliente] = useState<number | null>(null);
-
-  // Dados pessoais
-  const [nome, setNome] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [dataNascimento, setDataNascimento] = useState<string>(''); // ISO yyyy-mm-dd
-
-  // Endereço (manual)
-  const [cep, setCep] = useState('');
-  const [rua, setRua] = useState('');
-  const [numero, setNumero] = useState('');
-  const [bairro, setBairro] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [estado, setEstado] = useState('');
-
-  // UI
-  const [showModal, setShowModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [cpfValido, setCpfValido] = useState(true);
-
-  useEffect(() => {
-    const clienteString = localStorage.getItem('clienteSelecionado');
-
-    if (!clienteString) {
-      alert('Nenhum cliente selecionado.');
-      navigate('/clientes');
-      return;
-    }
-
-    try {
-      const c = JSON.parse(clienteString);
-
-      setIdCliente(c.id_cliente ?? c.id); // fallback, caso venha com outro nome
-
-      setNome(c.nome || '');
-      setCpf(c.cpf || '');
-      setTelefone(c.telefone || '');
-
-      // Normaliza data_nascimento -> yyyy-mm-dd
-      const dn = c.data_nascimento
-        ? String(c.data_nascimento).slice(0, 10) // se vier "2024-01-01T00:00:00.000Z"
-        : '';
-      setDataNascimento(dn);
-
-      // Endereço (se não vier, mantém vazio)
-      setCep(formatCEP(c.cep || ''));
-      setRua(c.rua || '');
-      setNumero(c.numero || '');
-      setBairro(c.bairro || '');
-      setCidade(c.cidade || '');
-      setEstado((c.estado || '').toUpperCase().slice(0, 2));
-    } catch {
-      alert('Dados do cliente inválidos.');
-      navigate('/clientes');
-    }
-  }, [navigate]);
-
-  // ====== FORMATADORES ======
+  // ====== FORMATADORES / VALIDAÇÕES (antes do useEffect para evitar hoisting) ======
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, '')
@@ -99,7 +40,6 @@ const AlterarCliente: React.FC = () => {
       .replace(/(\d{5})(\d)/, '$1-$2');
   };
 
-  // ====== VALIDAÇÕES ======
   const validarCPF = (cpfStr: string): boolean => {
     const s = cpfStr.replace(/[^\d]+/g, '');
     if (s.length !== 11 || /^(\d)\1{10}$/.test(s)) return false;
@@ -116,6 +56,92 @@ const AlterarCliente: React.FC = () => {
 
     return d1 === parseInt(s[9]) && d2 === parseInt(s[10]);
   };
+
+  // Identificação
+  const [idCliente, setIdCliente] = useState<number | null>(null);
+
+  // Dados pessoais
+  const [nome, setNome] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [dataNascimento, setDataNascimento] = useState<string>(''); // ISO yyyy-mm-dd
+
+  // Endereço (manual)
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
+
+  // UI
+  const [showModal, setShowModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [cpfValido, setCpfValido] = useState(true);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    const clienteString = localStorage.getItem('clienteSelecionado');
+
+    if (!clienteString) {
+      alert('Nenhum cliente selecionado.');
+      navigate('/clientes');
+      return;
+    }
+
+    try {
+      const c = JSON.parse(clienteString);
+      const id = c.id_cliente ?? c.id;
+      if (!id) {
+        alert('Cliente inválido.');
+        navigate('/clientes');
+        return;
+      }
+      setIdCliente(id);
+
+      // 🔎 Buscar dados completos no backend
+      const fetchCliente = async () => {
+        setCarregando(true);
+        try {
+          const res = await api.get(`/api/clientes/${id}`);
+          const cli = res.data || {};
+
+          setNome(cli.nome || '');
+          setCpf(cli.cpf ? formatCPF(String(cli.cpf)) : '');
+          setTelefone(cli.telefone ? formatTelefone(String(cli.telefone)) : '');
+          setDataNascimento(cli.data_nascimento ? String(cli.data_nascimento).slice(0, 10) : '');
+
+          // Endereço (se existir)
+          if (cli.endereco) {
+            setCep(cli.endereco.cep ? formatCEP(String(cli.endereco.cep)) : '');
+            setRua(cli.endereco.rua || '');
+            setNumero(cli.endereco.numero || '');
+            setBairro(cli.endereco.bairro || '');
+            setCidade(cli.endereco.cidade || '');
+            setEstado((cli.endereco.estado || '').toUpperCase().slice(0, 2));
+          } else {
+            // limpa endereço se não existir
+            setCep('');
+            setRua('');
+            setNumero('');
+            setBairro('');
+            setCidade('');
+            setEstado('');
+          }
+        } catch (err) {
+          console.error('Erro ao buscar cliente:', err);
+          alert('Erro ao carregar dados do cliente.');
+        } finally {
+          setCarregando(false);
+        }
+      };
+
+      fetchCliente();
+    } catch {
+      alert('Dados do cliente inválidos.');
+      navigate('/clientes');
+    }
+  }, [navigate]);
 
   // ====== SUBMIT ======
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,7 +172,7 @@ const AlterarCliente: React.FC = () => {
       nome,
       cpf, // se o backend exigir só dígitos: cpf.replace(/\D/g, '')
       telefone,
-      data_nascimento: dataNascimento, // já está em yyyy-mm-dd
+      data_nascimento: dataNascimento, // yyyy-mm-dd
       // Endereço
       cep: cepNumerico,
       rua,
@@ -154,7 +180,7 @@ const AlterarCliente: React.FC = () => {
       bairro,
       cidade,
       estado: estado.toUpperCase().slice(0, 2),
-      status: 'ativo', // mantém status ativo
+      status: 'ativo',
     };
 
     try {
@@ -172,163 +198,167 @@ const AlterarCliente: React.FC = () => {
 
       <section className="clientes-section">
         <div className="container-central">
-          <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
-            <label>
-              <span>👤 NOME</span>
-              <input
-                type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                required
-              />
-            </label>
-
-            <label>
-              <span>📄 CPF</span>
-              <input
-                type="text"
-                value={cpf}
-                onChange={(e) => {
-                  const valorFormatado = formatCPF(e.target.value);
-                  setCpf(valorFormatado);
-                  setCpfValido(validarCPF(valorFormatado));
-                }}
-                maxLength={14}
-                required
-                className={cpfValido || cpf.length < 14 ? '' : 'input-invalido'}
-              />
-              {cpf.length === 14 &&
-                (cpfValido ? (
-                  <span className="cpf-valido">CPF válido ✅</span>
-                ) : (
-                  <span className="cpf-invalido">CPF inválido ❌</span>
-                ))}
-            </label>
-
-            <label>
-              <span>📞 TELEFONE</span>
-              <input
-                type="text"
-                value={telefone}
-                onChange={(e) => setTelefone(formatTelefone(e.target.value))}
-                maxLength={15}
-                required
-              />
-            </label>
-
-            <label>
-              <span>📅 DATA DE NASCIMENTO</span>
-              <div className="data-picker-wrapper">
-                <DatePicker
-                  selected={dataNascimento ? new Date(dataNascimento) : null}
-                  onChange={(date: Date | null) =>
-                    setDataNascimento(date ? date.toISOString().split('T')[0] : '')
-                  }
-                  locale={ptBR}
-                  dateFormat="dd/MM/yyyy"
-                  placeholderText="Selecione a data"
-                  className="custom-datepicker"
-                  showIcon
-                  icon={<FaCalendarAlt color="#fff" />}
+          {carregando ? (
+            <p>Carregando...</p>
+          ) : (
+            <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
+              <label>
+                <span>👤 NOME</span>
+                <input
+                  type="text"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
                 />
+              </label>
+
+              <label>
+                <span>📄 CPF</span>
+                <input
+                  type="text"
+                  value={cpf}
+                  onChange={(e) => {
+                    const valorFormatado = formatCPF(e.target.value);
+                    setCpf(valorFormatado);
+                    setCpfValido(validarCPF(valorFormatado));
+                  }}
+                  maxLength={14}
+                  required
+                  className={cpfValido || cpf.length < 14 ? '' : 'input-invalido'}
+                />
+                {cpf.length === 14 &&
+                  (cpfValido ? (
+                    <span className="cpf-valido">CPF válido ✅</span>
+                  ) : (
+                    <span className="cpf-invalido">CPF inválido ❌</span>
+                  ))}
+              </label>
+
+              <label>
+                <span>📞 TELEFONE</span>
+                <input
+                  type="text"
+                  value={telefone}
+                  onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+                  maxLength={15}
+                  required
+                />
+              </label>
+
+              <label>
+                <span>📅 DATA DE NASCIMENTO</span>
+                <div className="data-picker-wrapper">
+                  <DatePicker
+                    selected={dataNascimento ? new Date(dataNascimento) : null}
+                    onChange={(date: Date | null) =>
+                      setDataNascimento(date ? date.toISOString().split('T')[0] : '')
+                    }
+                    locale={ptBR}
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="Selecione a data"
+                    className="custom-datepicker"
+                    showIcon
+                    icon={<FaCalendarAlt color="#fff" />}
+                  />
+                </div>
+              </label>
+
+              {/* ===== ENDEREÇO ===== */}
+              <div className="subtitulo" style={{ marginTop: 10, marginBottom: 4, fontWeight: 700 }}>
+                Endereço
               </div>
-            </label>
 
-            {/* ===== ENDEREÇO ===== */}
-            <div className="subtitulo" style={{ marginTop: 10, marginBottom: 4, fontWeight: 700 }}>
-              Endereço
-            </div>
+              <label>
+                <span>📍 CEP</span>
+                <input
+                  type="text"
+                  placeholder="00000-000"
+                  value={cep}
+                  onChange={(e) => setCep(formatCEP(e.target.value))}
+                  maxLength={9}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>📍 CEP</span>
-              <input
-                type="text"
-                placeholder="00000-000"
-                value={cep}
-                onChange={(e) => setCep(formatCEP(e.target.value))}
-                maxLength={9}
-                required
-              />
-            </label>
+              <label>
+                <span>🛣️ RUA (Logradouro)</span>
+                <input
+                  type="text"
+                  placeholder="Ex.: Avenida Brasil"
+                  value={rua}
+                  onChange={(e) => setRua(e.target.value)}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>🛣️ RUA (Logradouro)</span>
-              <input
-                type="text"
-                placeholder="Ex.: Avenida Brasil"
-                value={rua}
-                onChange={(e) => setRua(e.target.value)}
-                required
-              />
-            </label>
+              <label>
+                <span>🏠 NÚMERO</span>
+                <input
+                  type="text"
+                  placeholder="Ex.: 123"
+                  value={numero}
+                  onChange={(e) => setNumero(e.target.value)}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>🏠 NÚMERO</span>
-              <input
-                type="text"
-                placeholder="Ex.: 123"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                required
-              />
-            </label>
+              <label>
+                <span>🏘️ BAIRRO</span>
+                <input
+                  type="text"
+                  placeholder="Ex.: Centro"
+                  value={bairro}
+                  onChange={(e) => setBairro(e.target.value)}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>🏘️ BAIRRO</span>
-              <input
-                type="text"
-                placeholder="Ex.: Centro"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-                required
-              />
-            </label>
+              <label>
+                <span>🏙️ CIDADE</span>
+                <input
+                  type="text"
+                  placeholder="Ex.: Rio Verde"
+                  value={cidade}
+                  onChange={(e) => setCidade(e.target.value)}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>🏙️ CIDADE</span>
-              <input
-                type="text"
-                placeholder="Ex.: Rio Verde"
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-                required
-              />
-            </label>
+              <label>
+                <span>🗺️ ESTADO (UF)</span>
+                <input
+                  type="text"
+                  placeholder="UF"
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value.toUpperCase().slice(0, 2))}
+                  maxLength={2}
+                  required
+                />
+              </label>
 
-            <label>
-              <span>🗺️ ESTADO (UF)</span>
-              <input
-                type="text"
-                placeholder="UF"
-                value={estado}
-                onChange={(e) => setEstado(e.target.value.toUpperCase().slice(0, 2))}
-                maxLength={2}
-                required
-              />
-            </label>
+              <div className="acoes-clientes">
+                <button type="submit" className="btn azul">
+                  SALVAR
+                </button>
+                <button
+                  type="button"
+                  className="btn preto"
+                  onClick={() => {
+                    localStorage.removeItem('clienteSelecionado');
+                    navigate('/clientes');
+                  }}
+                >
+                  CANCELAR
+                </button>
+              </div>
 
-            <div className="acoes-clientes">
-              <button type="submit" className="btn azul">
-                SALVAR
-              </button>
-              <button
-                type="button"
-                className="btn preto"
-                onClick={() => {
-                  localStorage.removeItem('clienteSelecionado');
-                  navigate('/clientes');
-                }}
-              >
-                CANCELAR
-              </button>
-            </div>
-
-            <div className="voltar-container">
-              <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>
-                VOLTAR
-              </button>
-            </div>
-          </form>
+              <div className="voltar-container">
+                <button className="btn roxo" type="button" onClick={() => setShowModal(true)}>
+                  VOLTAR
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </section>
 
