@@ -14,14 +14,26 @@ import { FaCalendarAlt } from 'react-icons/fa';
 import api from '../../services/api';
 
 const AlterarCliente: React.FC = () => {
-  const nomeUsuario = localStorage.getItem('nome') || 'Usuário';
   const navigate = useNavigate();
 
+  // Identificação
   const [idCliente, setIdCliente] = useState<number | null>(null);
+
+  // Dados pessoais
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [dataNascimento, setDataNascimento] = useState<Date | null>(null);
+  const [dataNascimento, setDataNascimento] = useState<string>(''); // ISO yyyy-mm-dd
+
+  // Endereço (manual)
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
+
+  // UI
   const [showModal, setShowModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [cpfValido, setCpfValido] = useState(true);
@@ -35,16 +47,35 @@ const AlterarCliente: React.FC = () => {
       return;
     }
 
-    const cliente = JSON.parse(clienteString);
-    setIdCliente(cliente.id_cliente);
-    setNome(cliente.nome);
-    setCpf(cliente.cpf);
-    setTelefone(cliente.telefone);
-    if (cliente.data_nascimento) {
-      setDataNascimento(new Date(cliente.data_nascimento));
+    try {
+      const c = JSON.parse(clienteString);
+
+      setIdCliente(c.id_cliente ?? c.id); // fallback, caso venha com outro nome
+
+      setNome(c.nome || '');
+      setCpf(c.cpf || '');
+      setTelefone(c.telefone || '');
+
+      // Normaliza data_nascimento -> yyyy-mm-dd
+      const dn = c.data_nascimento
+        ? String(c.data_nascimento).slice(0, 10) // se vier "2024-01-01T00:00:00.000Z"
+        : '';
+      setDataNascimento(dn);
+
+      // Endereço (se não vier, mantém vazio)
+      setCep(formatCEP(c.cep || ''));
+      setRua(c.rua || '');
+      setNumero(c.numero || '');
+      setBairro(c.bairro || '');
+      setCidade(c.cidade || '');
+      setEstado((c.estado || '').toUpperCase().slice(0, 2));
+    } catch {
+      alert('Dados do cliente inválidos.');
+      navigate('/clientes');
     }
   }, [navigate]);
 
+  // ====== FORMATADORES ======
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, '')
@@ -61,40 +92,73 @@ const AlterarCliente: React.FC = () => {
       .slice(0, 15);
   };
 
-  const validarCPF = (cpf: string): boolean => {
-    cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-
-    let soma = 0;
-    for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
-    let digito1 = 11 - (soma % 11);
-    if (digito1 >= 10) digito1 = 0;
-
-    soma = 0;
-    for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i);
-    let digito2 = 11 - (soma % 11);
-    if (digito2 >= 10) digito2 = 0;
-
-    return digito1 === parseInt(cpf[9]) && digito2 === parseInt(cpf[10]);
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .slice(0, 8)
+      .replace(/(\d{5})(\d)/, '$1-$2');
   };
 
+  // ====== VALIDAÇÕES ======
+  const validarCPF = (cpfStr: string): boolean => {
+    const s = cpfStr.replace(/[^\d]+/g, '');
+    if (s.length !== 11 || /^(\d)\1{10}$/.test(s)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += parseInt(s[i]) * (10 - i);
+    let d1 = 11 - (soma % 11);
+    if (d1 >= 10) d1 = 0;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += parseInt(s[i]) * (11 - i);
+    let d2 = 11 - (soma % 11);
+    if (d2 >= 10) d2 = 0;
+
+    return d1 === parseInt(s[9]) && d2 === parseInt(s[10]);
+  };
+
+  // ====== SUBMIT ======
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!idCliente || !dataNascimento) {
-      alert('Dados inválidos.');
+    if (!idCliente) {
+      alert('Cliente inválido.');
       return;
     }
 
-    const clienteAtualizado = {
+    if (!dataNascimento) {
+      alert('Informe a data de nascimento.');
+      return;
+    }
+
+    const cepNumerico = cep.replace(/\D/g, '');
+    if (!cepNumerico || cepNumerico.length !== 8) {
+      alert('Informe um CEP válido.');
+      return;
+    }
+
+    if (!rua || !bairro || !cidade || !estado) {
+      const ok = confirm('Endereço incompleto. Deseja continuar mesmo assim?');
+      if (!ok) return;
+    }
+
+    const payload = {
       nome,
-      cpf,
+      cpf, // se o backend exigir só dígitos: cpf.replace(/\D/g, '')
       telefone,
-      data_nascimento: dataNascimento.toISOString().split('T')[0],
+      data_nascimento: dataNascimento, // já está em yyyy-mm-dd
+      // Endereço
+      cep: cepNumerico,
+      rua,
+      numero,
+      bairro,
+      cidade,
+      estado: estado.toUpperCase().slice(0, 2),
+      status: 'ativo', // mantém status ativo
     };
 
     try {
-      await api.put(`/api/clientes/${idCliente}`, clienteAtualizado);
+      await api.put(`/api/clientes/${idCliente}`, payload);
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Erro ao atualizar cliente:', error);
@@ -111,7 +175,12 @@ const AlterarCliente: React.FC = () => {
           <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
             <label>
               <span>👤 NOME</span>
-              <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required />
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+              />
             </label>
 
             <label>
@@ -151,8 +220,10 @@ const AlterarCliente: React.FC = () => {
               <span>📅 DATA DE NASCIMENTO</span>
               <div className="data-picker-wrapper">
                 <DatePicker
-                  selected={dataNascimento}
-                  onChange={(date: Date | null) => setDataNascimento(date)}
+                  selected={dataNascimento ? new Date(dataNascimento) : null}
+                  onChange={(date: Date | null) =>
+                    setDataNascimento(date ? date.toISOString().split('T')[0] : '')
+                  }
                   locale={ptBR}
                   dateFormat="dd/MM/yyyy"
                   placeholderText="Selecione a data"
@@ -161,6 +232,79 @@ const AlterarCliente: React.FC = () => {
                   icon={<FaCalendarAlt color="#fff" />}
                 />
               </div>
+            </label>
+
+            {/* ===== ENDEREÇO ===== */}
+            <div className="subtitulo" style={{ marginTop: 10, marginBottom: 4, fontWeight: 700 }}>
+              Endereço
+            </div>
+
+            <label>
+              <span>📍 CEP</span>
+              <input
+                type="text"
+                placeholder="00000-000"
+                value={cep}
+                onChange={(e) => setCep(formatCEP(e.target.value))}
+                maxLength={9}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🛣️ RUA (Logradouro)</span>
+              <input
+                type="text"
+                placeholder="Ex.: Avenida Brasil"
+                value={rua}
+                onChange={(e) => setRua(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏠 NÚMERO</span>
+              <input
+                type="text"
+                placeholder="Ex.: 123"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏘️ BAIRRO</span>
+              <input
+                type="text"
+                placeholder="Ex.: Centro"
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🏙️ CIDADE</span>
+              <input
+                type="text"
+                placeholder="Ex.: Rio Verde"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+                required
+              />
+            </label>
+
+            <label>
+              <span>🗺️ ESTADO (UF)</span>
+              <input
+                type="text"
+                placeholder="UF"
+                value={estado}
+                onChange={(e) => setEstado(e.target.value.toUpperCase().slice(0, 2))}
+                maxLength={2}
+                required
+              />
             </label>
 
             <div className="acoes-clientes">
@@ -188,6 +332,7 @@ const AlterarCliente: React.FC = () => {
         </div>
       </section>
 
+      {/* Modal de confirmação de saída sem salvar */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -214,6 +359,7 @@ const AlterarCliente: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de sucesso */}
       {showSuccessModal && (
         <div className="modal-overlay">
           <div className="modal-content">

@@ -1,7 +1,7 @@
 // src/pages/dashboard/Dashboard.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import MenuLateral from "../../components/MenuLateral";
-import api from "../../services/api";
+import React, { useEffect, useMemo, useState } from 'react';
+import MenuLateral from '../../components/MenuLateral';
+import api from '../../services/api';
 
 // Tipos do resumo
 type PorStatus = { status: string; total: number };
@@ -22,7 +22,7 @@ type Summary = {
   por_status: PorStatus[];
   por_tecnico: PorTecnico[]; // agora inclui finalizadas_periodo
   ultimas_ordens: UltimaOS[];
-  msgs_hoje: number;
+  msgs_hoje: number; // pode manter no tipo mesmo sem exibir o card
 };
 
 // Gráficos (recharts)
@@ -36,34 +36,34 @@ import {
   Legend,
   CartesianGrid,
   Cell,
-} from "recharts";
+} from 'recharts';
 
 const periodOptions = [
-  { value: "today", label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "7d", label: "Últimos 7 dias" },
-  { value: "15d", label: "Últimos 15 dias" },
-  { value: "30d", label: "Últimos 30 dias" },
-  { value: "month", label: "Mês atual" },
+  { value: 'today', label: 'Hoje' },
+  { value: 'yesterday', label: 'Ontem' },
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '15d', label: 'Últimos 15 dias' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: 'month', label: 'Mês atual' },
 ];
 
 // paleta básica pra “dar vida” ao gráfico de status
-const palette = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#e11d48"];
+const palette = ['#2563eb', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#e11d48'];
 
 const Dashboard: React.FC = () => {
   // ✅ Restringir a dashboard ao gerente (id=1 no localStorage)
-  const userId = localStorage.getItem("id");
-  const isGerente = userId === "1";
+  const userId = localStorage.getItem('id');
+  const isGerente = userId === '1';
 
-  const [period, setPeriod] = useState<string>("today");
+  const [period, setPeriod] = useState<string>('today');
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
 
   const load = async () => {
     if (!isGerente) return;
     setLoading(true);
-    setError("");
+    setError('');
     try {
       // IMPORTANTE: ajuste conforme seu api.ts:
       // - Se baseURL já inclui /api, use "/dashboard/summary?..."
@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
       const res = await api.get<Summary>(`/api/dashboard/summary?period=${period}`);
       setData(res.data);
     } catch (e) {
-      setError("Falha ao carregar a dashboard.");
+      setError('Falha ao carregar a dashboard.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const Dashboard: React.FC = () => {
     if (!data) return [];
     // Normaliza rótulos longos e aplica cores
     return data.por_status.map((s, i) => ({
-      status: s.status.length > 14 ? s.status.slice(0, 12) + "…" : s.status,
+      status: s.status.length > 14 ? s.status.slice(0, 12) + '…' : s.status,
       total: s.total,
       fill: palette[i % palette.length],
     }));
@@ -106,12 +106,12 @@ const Dashboard: React.FC = () => {
   // Para não-gerente: saudação simples
   if (!isGerente) {
     const hora = new Date().getHours();
-    const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+    const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
     const mensagens = [
-      "Tenha um ótimo dia!",
-      "Bons atendimentos por aí!",
-      "Foco no cliente 😀",
-      "Conte com a equipe!",
+      'Tenha um ótimo dia!',
+      'Bons atendimentos por aí!',
+      'Foco no cliente 😀',
+      'Conte com a equipe!',
     ];
     const msg = mensagens[hora % mensagens.length];
 
@@ -159,23 +159,34 @@ const Dashboard: React.FC = () => {
 
         {!loading && !error && data && (
           <>
-            {/* Cards principais — agora coloridinhos */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <Card title="Clientes" value={data.total_clientes} color="from-blue-500 to-blue-600" />
-              <Card title="OS em Aberto" value={data.em_aberto} color="from-emerald-500 to-emerald-600" />
+            {/* Cards principais — sem o card de WhatsApp (Hoje) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card
+                title="Clientes"
+                value={data.total_clientes}
+                color="from-blue-500 to-blue-600"
+              />
+              <Card
+                title="OS em Aberto"
+                value={data.em_aberto}
+                color="from-emerald-500 to-emerald-600"
+              />
               <Card
                 title={
-                  period === "today"
-                    ? "Entregues Hoje"
-                    : period === "yesterday"
-                    ? "Entregues Ontem"
-                    : "Entregues (Período)"
+                  period === 'today'
+                    ? 'Entregues Hoje'
+                    : period === 'yesterday'
+                      ? 'Entregues Ontem'
+                      : 'Entregues (Período)'
                 }
                 value={data.entregues}
                 color="from-amber-500 to-amber-600"
               />
-              <Card title="Em Diagnóstico" value={data.em_diagnostico} color="from-fuchsia-500 to-fuchsia-600" />
-              <Card title="WhatsApp (Hoje)" value={data.msgs_hoje} color="from-cyan-500 to-cyan-600" />
+              <Card
+                title="Em Diagnóstico"
+                value={data.em_diagnostico}
+                color="from-fuchsia-500 to-fuchsia-600"
+              />
             </div>
 
             {/* Linha de gráficos e feed */}
@@ -223,10 +234,10 @@ const Dashboard: React.FC = () => {
                     data.ultimas_ordens.map((o) => (
                       <li key={o.id_ordem} className="flex justify-between gap-2">
                         <div className="truncate">
-                          <span className="font-semibold">#{o.id_ordem}</span>{" "}
-                          <span className="opacity-80">• {o.cliente}</span>{" "}
+                          <span className="font-semibold">#{o.id_ordem}</span>{' '}
+                          <span className="opacity-80">• {o.cliente}</span>{' '}
                           <span className="opacity-60">
-                            • {o.local ?? "-"} • {o.status}
+                            • {o.local ?? '-'} • {o.status}
                           </span>
                         </div>
                         <span className="opacity-60">
@@ -253,7 +264,9 @@ const Card: React.FC<{ title: string; value: number | string; color: string }> =
   color,
 }) => (
   <div className="rounded-2xl p-4 border shadow-sm bg-white">
-    <div className={`text-xs uppercase tracking-wide mb-1 bg-gradient-to-r ${color} text-white inline-block px-2 py-0.5 rounded`}>
+    <div
+      className={`text-xs uppercase tracking-wide mb-1 bg-gradient-to-r ${color} text-white inline-block px-2 py-0.5 rounded`}
+    >
       {title}
     </div>
     <div className="text-3xl font-bold mt-1">{value}</div>
