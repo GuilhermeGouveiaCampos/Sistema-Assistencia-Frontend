@@ -134,47 +134,41 @@ const TecnicosAtribuicoes: React.FC = () => {
 
   return (
     <MenuLateral>
-      <h1 className="titulo-clientes">ATRIBUIÇÕES DOS TÉCNICOS</h1>
+      <header className="titulo-bar">
+        <h1 className="titulo-clientes">ATRIBUIÇÕES DOS TÉCNICOS</h1>
+      </header>
 
       <section className="clientes-section">
         <div className="container-central">
 
-          {/* 🔎 Barra de filtros (estilo igual à imagem) */}
-          <div className="filtros-wrap" style={{ marginBottom: 12 }}>
-            {/* === BLOCO ALTERADO === */}
-            <div className="filtros-linha">
-              <input
-                type="text"
-                className="input-pesquisa filtro-box"
-                placeholder="NOME DO CLIENTE"
-                value={filtroCliente}
-                onChange={(e) => setFiltroCliente(e.target.value)}
-              />
-              <input
-                type="text"
-                className="input-pesquisa filtro-box"
-                placeholder="NOME DO TÉCNICO"
-                value={filtroTecnico}
-                onChange={(e) => setFiltroTecnico(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn btn-consultar"
-                onClick={carregar}
-                title="Consultar atribuições"
-              >
-                CONSULTAR
-              </button>
-            </div>
-            {/* === FIM BLOCO ALTERADO === */}
+          {/* 🔎 Barra de filtros — mesmo layout da tela de TÉCNICOS */}
+          <div className="filtros-clientes">
+            <input
+              type="text"
+              placeholder="NOME DO CLIENTE"
+              value={filtroCliente}
+              onChange={(e) => setFiltroCliente(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="NOME DO TÉCNICO"
+              value={filtroTecnico}
+              onChange={(e) => setFiltroTecnico(e.target.value)}
+            />
+            <button
+              className="btn roxo-claro"
+              onClick={carregar}
+            >
+              CONSULTAR
+            </button>
+          </div>
 
-            {/* contador resumido */}
-            <div className="muted" style={{ marginTop: 6 }}>
-              {carregando
-                ? 'Atualizando...'
-                : `${gruposFiltrados.length} técnico(s) — ` +
-                  `${gruposFiltrados.reduce((acc, g) => acc + g.total_os, 0)} OS filtradas`}
-            </div>
+          {/* contador resumido, igual ideia das outras telas */}
+          <div className="muted" style={{ margin: '6px 0 12px' }}>
+            {carregando
+              ? 'Atualizando...'
+              : `${gruposFiltrados.length} técnico(s) — ` +
+                `${gruposFiltrados.reduce((acc, g) => acc + g.total_os, 0)} OS filtradas`}
           </div>
 
           {carregando ? (
