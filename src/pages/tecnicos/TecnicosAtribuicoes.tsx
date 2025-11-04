@@ -110,14 +110,17 @@ const TecnicosAtribuicoes: React.FC = () => {
         if (!tecnicoOk) return null;
 
         // filtro por cliente (aplica por OS dentro do grupo)
-        const ordensFiltradas = g.ordens.filter((o) =>
-          !fCli || norm(o.nome_cliente).includes(fCli)
+        const ordensFiltradas = g.ordens.filter(
+          (o) => !fCli || norm(o.nome_cliente).includes(fCli),
         );
 
         if (ordensFiltradas.length === 0) return null;
 
         // recalcula totais conforme filtrado
-        const totalMin = ordensFiltradas.reduce((acc, o) => acc + (o.minutos_total || 0), 0);
+        const totalMin = ordensFiltradas.reduce(
+          (acc, o) => acc + (o.minutos_total || 0),
+          0,
+        );
 
         return {
           ...g,
@@ -136,35 +139,35 @@ const TecnicosAtribuicoes: React.FC = () => {
       <section className="clientes-section">
         <div className="container-central">
 
-          {/* 🔎 Barra de filtros */}
+          {/* 🔎 Barra de filtros (estilo igual à imagem) */}
           <div className="filtros-wrap" style={{ marginBottom: 12 }}>
-            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
+            {/* === BLOCO ALTERADO === */}
+            <div className="filtros-linha">
               <input
                 type="text"
-                className="input-pesquisa"
-                placeholder="Filtrar por nome do cliente..."
+                className="input-pesquisa filtro-box"
+                placeholder="NOME DO CLIENTE"
                 value={filtroCliente}
                 onChange={(e) => setFiltroCliente(e.target.value)}
               />
               <input
                 type="text"
-                className="input-pesquisa"
-                placeholder="Filtrar por nome do técnico..."
+                className="input-pesquisa filtro-box"
+                placeholder="NOME DO TÉCNICO"
                 value={filtroTecnico}
                 onChange={(e) => setFiltroTecnico(e.target.value)}
               />
               <button
                 type="button"
-                className="btn preto"
-                onClick={() => {
-                  setFiltroCliente('');
-                  setFiltroTecnico('');
-                }}
-                title="Limpar filtros"
+                className="btn btn-consultar"
+                onClick={carregar}
+                title="Consultar atribuições"
               >
-                LIMPAR
+                CONSULTAR
               </button>
             </div>
+            {/* === FIM BLOCO ALTERADO === */}
+
             {/* contador resumido */}
             <div className="muted" style={{ marginTop: 6 }}>
               {carregando
@@ -184,7 +187,9 @@ const TecnicosAtribuicoes: React.FC = () => {
                 <div className="card-atr__header">
                   <div>
                     <strong>{g.nome_tecnico}</strong>
-                    <div className="muted">{g.telefone ? `📞 ${g.telefone}` : '📞 N/D'}</div>
+                    <div className="muted">
+                      {g.telefone ? `📞 ${g.telefone}` : '📞 N/D'}
+                    </div>
                   </div>
                   <div className="card-atr__resume">
                     <span>
@@ -216,7 +221,9 @@ const TecnicosAtribuicoes: React.FC = () => {
                             {o.numero_serie || 's/ série'}
                           </td>
                           <td>{o.status_os}</td>
-                          <td>{new Date(o.data_criacao).toLocaleDateString()}</td>
+                          <td>
+                            {new Date(o.data_criacao).toLocaleDateString()}
+                          </td>
                           <td>
                             <b>{mmToHuman(o.minutos_total || 0)}</b>
                           </td>

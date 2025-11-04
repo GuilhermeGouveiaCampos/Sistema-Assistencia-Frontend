@@ -69,7 +69,6 @@
   cursor: pointer;
 }
 
-
 .btn.roxo {
   background-color: purple;
   color: white;
@@ -82,7 +81,7 @@
   display: flex;
   height: 100vh;
   overflow-x: hidden;
-  width: 100vw; 
+  width: 100vw;
 }
 
 .sidebar {
@@ -170,8 +169,8 @@ button:disabled {
 }
 .titulo-clientes {
   position: absolute;
-  top: 2.4rem;     /* ← diminua esse valor para aproximar */
-  left: 40px;     /* alinhado ao início do conteúdo principal */
+  top: 2.4rem; /* ← diminua esse valor para aproximar */
+  left: 40px; /* alinhado ao início do conteúdo principal */
   font-size: 40px;
   font-weight: bold;
   color: black;
@@ -317,22 +316,75 @@ button:disabled {
 .tabela-detalhes tr:not(:last-child) td {
   border-bottom: 1px solid #ddd;
 }
-.card-atr{
+.card-atr {
   border: 2px solid #e6e6e6;
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 16px;
   background: #fff;
 }
-.card-atr__header{
+.card-atr__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
-.card-atr__resume{
+.card-atr__resume {
   display: flex;
   gap: 14px;
   font-weight: 600;
 }
-.muted{ color:#666; font-size:.9rem; }
+.muted {
+  color: #666;
+  font-size: 0.9rem;
+}
+/* linha dos filtros: itens lado a lado */
+.filtros-linha {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  max-width: 600px; /* ajusta se quiser maior */
+}
+
+/* caixinhas pretas tipo “NOME COMPLETO”, “CPF” */
+.filtro-box {
+  flex: 1;
+  background-color: #000;
+  color: #e0ecff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* deixa o placeholder azuladinho como na imagem */
+.filtro-box::placeholder {
+  color: #8fa3ff;
+}
+
+/* remove contorno feio padrão */
+.filtro-box:focus {
+  outline: 2px solid #8a2be2;
+}
+
+/* botão roxo “CONSULTAR” */
+.btn-consultar {
+  background: #c44bff;          /* roxo semelhante ao print */
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0 22px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* hover leve */
+.btn-consultar:hover {
+  filter: brightness(1.1);
+}
