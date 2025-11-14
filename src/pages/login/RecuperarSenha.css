@@ -104,21 +104,28 @@
 
 /* Lado direito: imagem */
 .login-right {
-  background-color: #241d50;
-  border-radius: 0 16px 16px 0;
-  padding: 1.5rem;
+  /* removendo fundo e caixa */
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+
+  /* reajustando tamanho */
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 380px;
-  max-width: 40%;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+
+  /* aumentar o espaço da imagem */
+  width: 520px;         /* antes era 380px */
+  max-width: 50%;
+  padding: 0;           /* remove acolchoamento */
 }
 
 .ilustracao {
-  max-width: 100%;
+  width: 95%;
   height: auto;
+  object-fit: contain;
 }
+
 
 /* Responsividade: em telas menores, empilha tudo vertical */
 @media (max-width: 900px) {
