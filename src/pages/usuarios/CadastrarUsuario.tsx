@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "../dashboard/Dashboard.css";
-import "../Css/Cadastrar.css";
-import MenuLateral from "../../components/MenuLateral";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import '../dashboard/Dashboard.css';
+import '../Css/Cadastrar.css';
+import MenuLateral from '../../components/MenuLateral';
 
 // ✅ importando cliente axios central (usa import.meta.env.VITE_API_URL)
-import api from "../../services/api";
+import api from '../../services/api';
 
 const validarCPF = (cpf: string): boolean => {
   const cleaned = cpf.replace(/\D/g, '');
@@ -27,7 +27,7 @@ const validarCPF = (cpf: string): boolean => {
 
 // máscara de telefone
 const formatarTelefone = (valor: string): string => {
-  const n = valor.replace(/\D/g, "").slice(0, 11);
+  const n = valor.replace(/\D/g, '').slice(0, 11);
   if (n.length <= 2) return `(${n}`;
   if (n.length <= 6) return `(${n.slice(0, 2)}) ${n.slice(2)}`;
   if (n.length <= 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
@@ -38,14 +38,14 @@ const CadastrarUsuario: React.FC = () => {
   const navigate = useNavigate();
 
   const [formulario, setFormulario] = useState({
-    nome: "",
-    cpf: "",
-    email: "",
-    senha: "",
-    id_nivel: "1",
-    especializacao: "",
-    telefone: "",
-    genero: "masculino",
+    nome: '',
+    cpf: '',
+    email: '',
+    senha: '',
+    id_nivel: '1',
+    especializacao: '',
+    telefone: '',
+    genero: 'masculino',
   });
 
   const [cpfValido, setCpfValido] = useState<boolean | null>(null);
@@ -57,28 +57,26 @@ const CadastrarUsuario: React.FC = () => {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
 
   // ✅ NOVO: campo de confirmar senha
-  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState('');
 
   const formatarCPF = (valor: string): string => {
-    const apenasNumeros = valor.replace(/\D/g, "");
+    const apenasNumeros = valor.replace(/\D/g, '');
     return apenasNumeros
-      .replace(/^(\d{3})(\d)/, "$1.$2")
-      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4')
       .slice(0, 14);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const novoValor =
-      name === "cpf" ? formatarCPF(value)
-      : name === "telefone" ? formatarTelefone(value)
-      : value;
+      name === 'cpf' ? formatarCPF(value) : name === 'telefone' ? formatarTelefone(value) : value;
 
     setFormulario((prev) => ({ ...prev, [name]: novoValor }));
 
-    if (name === "cpf") {
-      const somenteNumeros = novoValor.replace(/\D/g, "");
+    if (name === 'cpf') {
+      const somenteNumeros = novoValor.replace(/\D/g, '');
       if (somenteNumeros.length === 11) {
         setCpfValido(validarCPF(somenteNumeros));
       } else {
@@ -92,21 +90,25 @@ const CadastrarUsuario: React.FC = () => {
 
     // ✅ validação de confirmar senha
     if (formulario.senha !== confirmarSenha) {
-      alert("As senhas não coincidem.");
+      alert('As senhas não coincidem.');
       return;
+    }
+    if (formulario.telefone.replace(/\D/g, '').length < 10) {
+       alert("Informe um telefone válido.");
+       return;
     }
 
     if (!validarCPF(formulario.cpf)) {
-      alert("CPF inválido.");
+      alert('CPF inválido.');
       return;
     }
 
-    if (formulario.id_nivel === "3") {
+    if (formulario.id_nivel === '3') {
       const faltando: string[] = [];
-      if (!formulario.especializacao.trim()) faltando.push("especializacao");
-      if (!formulario.telefone.trim()) faltando.push("telefone");
+      if (!formulario.especializacao.trim()) faltando.push('especializacao');
+      if (!formulario.telefone.trim()) faltando.push('telefone');
       if (faltando.length) {
-        alert(`Campos de técnico faltando: ${faltando.join(", ")}`);
+        alert(`Campos de técnico faltando: ${faltando.join(', ')}`);
         return;
       }
     }
@@ -114,26 +116,26 @@ const CadastrarUsuario: React.FC = () => {
     try {
       const payload: any = {
         nome: formulario.nome.trim(),
-        cpf: formulario.cpf.replace(/\D/g, ""),
+        cpf: formulario.cpf.replace(/\D/g, ''),
         email: formulario.email.trim(),
         senha: formulario.senha,
         id_nivel: Number(formulario.id_nivel),
         genero: formulario.genero.toLowerCase(),
-        status: "ativo",
+        status: 'ativo',
       };
 
-      if (formulario.id_nivel === "3") {
+      if (formulario.id_nivel === '3') {
         payload.especializacao = formulario.especializacao.trim();
-        payload.telefone = formulario.telefone.replace(/\D/g, "");
+        payload.telefone = formulario.telefone.replace(/\D/g, '');
       }
 
       // ✅ agora usando api central (VITE_API_URL)
-      await api.post("/api/usuarios", payload);
+      await api.post('/api/usuarios', payload);
 
       setMostrarModalSucesso(true);
     } catch (error: any) {
-      console.error("Erro ao cadastrar usuário:", error?.response?.data || error);
-      alert(error?.response?.data?.erro || "Erro ao cadastrar usuário.");
+      console.error('Erro ao cadastrar usuário:', error?.response?.data || error);
+      alert(error?.response?.data?.erro || 'Erro ao cadastrar usuário.');
     }
   };
 
@@ -160,7 +162,9 @@ const CadastrarUsuario: React.FC = () => {
             </div>
             <div className="modal-body">
               <p>Usuário cadastrado com sucesso!</p>
-              <button className="btn azul" onClick={() => navigate('/usuarios')}>OK</button>
+              <button className="btn azul" onClick={() => navigate('/usuarios')}>
+                OK
+              </button>
             </div>
           </div>
         </div>
@@ -173,29 +177,66 @@ const CadastrarUsuario: React.FC = () => {
           <form className="form-cadastro-clientes" onSubmit={handleSubmit}>
             <label>
               <span>👤 NOME</span>
-              <input type="text" name="nome" required value={formulario.nome} onChange={handleChange} />
+              <input
+                type="text"
+                name="nome"
+                required
+                value={formulario.nome}
+                onChange={handleChange}
+              />
             </label>
 
             <label>
               <span>📄 CPF</span>
-              <input type="text" name="cpf" required value={formulario.cpf} onChange={handleChange} />
+              <input
+                type="text"
+                name="cpf"
+                required
+                value={formulario.cpf}
+                onChange={handleChange}
+              />
               {cpfValido !== null && (
-                <p style={{ color: cpfValido ? "green" : "red", fontSize: "0.9rem", marginTop: "5px" }}>
-                  {cpfValido ? "CPF válido ✅" : "CPF inválido ❌"}
+                <p
+                  style={{
+                    color: cpfValido ? 'green' : 'red',
+                    fontSize: '0.9rem',
+                    marginTop: '5px',
+                  }}
+                >
+                  {cpfValido ? 'CPF válido ✅' : 'CPF inválido ❌'}
                 </p>
               )}
             </label>
 
             <label>
               <span>📧 E-MAIL</span>
-              <input type="email" name="email" required value={formulario.email} onChange={handleChange} />
+              <input
+                type="email"
+                name="email"
+                required
+                value={formulario.email}
+                onChange={handleChange}
+              />
+            </label>
+
+            <label>
+              <span>📞 TELEFONE</span>
+              <input
+                type="text"
+                name="telefone"
+                required
+                value={formulario.telefone}
+                onChange={handleChange}
+                placeholder="(64) 99999-9999"
+                maxLength={15}
+              />
             </label>
 
             <label>
               <span>🔒 SENHA</span>
-              <div style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
-                  type={mostrarSenha ? "text" : "password"}
+                  type={mostrarSenha ? 'text' : 'password'}
                   name="senha"
                   required
                   value={formulario.senha}
@@ -205,18 +246,23 @@ const CadastrarUsuario: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setMostrarSenha(!mostrarSenha)}
-                  style={{ marginLeft: "5px", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                  style={{
+                    marginLeft: '5px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                  }}
                 >
-                  {mostrarSenha ? "🚫" : "👁️"}
+                  {mostrarSenha ? '🚫' : '👁️'}
                 </button>
               </div>
             </label>
 
             <label>
               <span>🔒 CONFIRMAR SENHA</span>
-              <div style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
-                  type={mostrarConfirmarSenha ? "text" : "password"}
+                  type={mostrarConfirmarSenha ? 'text' : 'password'}
                   name="confirmarSenha"
                   required
                   value={confirmarSenha}
@@ -226,21 +272,26 @@ const CadastrarUsuario: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-                  style={{ marginLeft: "5px", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                  style={{
+                    marginLeft: '5px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                  }}
                 >
-                  {mostrarConfirmarSenha ? "🚫" : "👁️"}
+                  {mostrarConfirmarSenha ? '🚫' : '👁️'}
                 </button>
               </div>
               {/* ✅ feedback em tempo real abaixo do campo */}
               {mostrouFeedbackConfirmar && (
                 <p
                   style={{
-                    color: senhasIguais ? "green" : "red",
-                    fontSize: "0.9rem",
-                    marginTop: "5px",
+                    color: senhasIguais ? 'green' : 'red',
+                    fontSize: '0.9rem',
+                    marginTop: '5px',
                   }}
                 >
-                  {senhasIguais ? "As senhas coincidem ✅" : "As senhas não coincidem ❌"}
+                  {senhasIguais ? 'As senhas coincidem ✅' : 'As senhas não coincidem ❌'}
                 </p>
               )}
             </label>
@@ -262,7 +313,7 @@ const CadastrarUsuario: React.FC = () => {
               </select>
             </label>
 
-            {formulario.id_nivel === "3" && (
+            {formulario.id_nivel === '3' && (
               <>
                 <label>
                   <span>📚 ESPECIALIZAÇÃO</span>
@@ -290,12 +341,18 @@ const CadastrarUsuario: React.FC = () => {
             )}
 
             <div className="acoes-clientes">
-              <button type="submit" className="btn azul">SALVAR</button>
-              <button type="button" className="btn preto" onClick={() => navigate("/usuarios")}>CANCELAR</button>
+              <button type="submit" className="btn azul">
+                SALVAR
+              </button>
+              <button type="button" className="btn preto" onClick={() => navigate('/usuarios')}>
+                CANCELAR
+              </button>
             </div>
 
             <div className="voltar-container">
-              <button type="button" className="btn roxo" onClick={() => navigate("/usuarios")}>VOLTAR</button>
+              <button type="button" className="btn roxo" onClick={() => navigate('/usuarios')}>
+                VOLTAR
+              </button>
             </div>
           </form>
         </div>
